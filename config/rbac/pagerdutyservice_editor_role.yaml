@@ -1,0 +1,24 @@
+# permissions for end users to edit pagerdutyservices.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pagerdutyservice-editor-role
+rules:
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyservices/status
+  verbs:
+  - get

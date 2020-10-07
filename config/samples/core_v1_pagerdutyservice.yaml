@@ -1,0 +1,7 @@
+apiVersion: core.strateos.com/v1
+kind: PagerdutyService
+metadata:
+  name: pagerdutyservice-sample
+spec:
+  # Add fields here
+  foo: bar
