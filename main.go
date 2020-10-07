@@ -51,13 +51,13 @@ func main() {
 	var servicePrefix string
 	var rulesetName string
 
-	flag.StringVar(&metricsAddr, "metrics-addr", lookupEnvOrStr("METRICS_ADDR", ":8080"), "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", getEnv("METRICS_ADDR", ":8080"), "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&pagerdutyAPIKey, "api-key", lookupEnvOrStr("PAGERDUTY_API_KEY", ""), "Authorization key for the pagerduty API.")
-	flag.StringVar(&servicePrefix, "service-prefix", lookupEnvOrStr("PAGERDUTY_SERVICE_PREFIX", ""), "Prefix to be added to Pagerduty Service names")
-	flag.StringVar(&rulesetName, "ruleset", lookupEnvOrStr("PAGERDUTY_RULESET", "auto"), "Name of the ruleset to append routing rules to.")
+	flag.StringVar(&pagerdutyAPIKey, "api-key", getEnv("PAGERDUTY_API_KEY", ""), "Authorization key for the pagerduty API.")
+	flag.StringVar(&servicePrefix, "service-prefix", getEnv("PAGERDUTY_SERVICE_PREFIX", ""), "Prefix to be added to Pagerduty Service names")
+	flag.StringVar(&rulesetName, "ruleset", getEnv("PAGERDUTY_RULESET", "auto"), "Name of the ruleset to append routing rules to.")
 	flag.Parse()
 
 	if pagerdutyAPIKey == "" {
@@ -82,7 +82,7 @@ func main() {
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
 		Scheme:        mgr.GetScheme(),
-		ApiKey:        pagerdutyAPIKey,
+		APIKey:        pagerdutyAPIKey,
 		ServicePrefix: servicePrefix,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyService")
@@ -97,7 +97,7 @@ func main() {
 	}
 }
 
-func lookupEnvOrStr(key string, defaultVal string) string {
+func getEnv(key string, defaultVal string) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
 	}
