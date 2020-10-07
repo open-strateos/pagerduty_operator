@@ -25,23 +25,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "pagerduty-operator/api/v1"
+	v1 "pagerduty-operator/api/v1"
 )
 
 // PagerdutyServiceReconciler reconciles a PagerdutyService object
 type PagerdutyServiceReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log           logr.Logger
+	Scheme        *runtime.Scheme
+	APIKey        string // pagerduty API key
+	ServicePrefix string // append to service names
 }
 
 // +kubebuilder:rbac:groups=core.strateos.com,resources=pagerdutyservices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.strateos.com,resources=pagerdutyservices/status,verbs=get;update;patch
 
 func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
+	ctx := context.Background()
 	_ = r.Log.WithValues("pagerdutyservice", req.NamespacedName)
 
-	// your logic here
+	var service v1.PagerdutyService
+	r.Get(ctx, req.NamespacedName, &service)
 
 	return ctrl.Result{}, nil
 }

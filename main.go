@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,11 +47,22 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	var pagerdutyAPIKey string
+	var servicePrefix string
+	var rulesetName string
+
+	flag.StringVar(&metricsAddr, "metrics-addr", lookupEnvOrStr("METRICS_ADDR", ":8080"), "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&pagerdutyAPIKey, "api-key", lookupEnvOrStr("PAGERDUTY_API_KEY", ""), "Authorization key for the pagerduty API.")
+	flag.StringVar(&servicePrefix, "service-prefix", lookupEnvOrStr("PAGERDUTY_SERVICE_PREFIX", ""), "Prefix to be added to Pagerduty Service names")
+	flag.StringVar(&rulesetName, "ruleset", lookupEnvOrStr("PAGERDUTY_RULESET", "auto"), "Name of the ruleset to append routing rules to.")
 	flag.Parse()
+
+	if pagerdutyAPIKey == "" {
+		log.Fatal("API key is required.")
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
@@ -67,9 +79,11 @@ func main() {
 	}
 
 	if err = (&controllers.PagerdutyServiceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
+		Scheme:        mgr.GetScheme(),
+		ApiKey:        pagerdutyAPIKey,
+		ServicePrefix: servicePrefix,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyService")
 		os.Exit(1)
@@ -81,4 +95,11 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func lookupEnvOrStr(key string, defaultVal string) string {
+	if val, ok := os.LookupEnv(key); ok {
+		return val
+	}
+	return defaultVal
 }
