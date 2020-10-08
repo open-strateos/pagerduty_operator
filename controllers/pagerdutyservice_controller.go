@@ -21,6 +21,7 @@ import (
 	"time"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
+	"github.com/dchest/uniuri"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,8 +34,9 @@ import (
 // PagerdutyServiceReconciler reconciles a PagerdutyService object
 type PagerdutyServiceReconciler struct {
 	client.Client
-	Log           logr.Logger
-	Scheme        *runtime.Scheme
+	Log    logr.Logger
+	Scheme *runtime.Scheme
+
 	PdClient      *pagerduty.Client
 	RulesetID     string
 	ServicePrefix string // append to service names
@@ -79,25 +81,36 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		pdService = &pagerduty.Service{}
 	}
 
-	pdService.Name = r.applyPrefix(kubeService.Name)
 	pdService.Description = spec.Description
 	pdService.EscalationPolicy = *escalationPolicy
 
 	if serviceExists {
 		pdService, err = r.PdClient.UpdateService(*pdService)
 	} else {
+		pdService.Name = r.generatePdServiceName(kubeService.Name, 6)
 		pdService, err = r.PdClient.CreateService(*pdService)
 	}
+	if err != nil {
+		logger.Error(err, "Failed to create pagerduty service resource", "service", pdService)
+		return ctrl.Result{}, err
+	}
+
+	kubeService.Status.ServiceID = pdService.ID
+	err = r.Update(ctx, kubeService.DeepCopy())
 
 	return ctrl.Result{}, err
 }
 
-// applyPrefix prepends the configured prefix if applicable
-func (r *PagerdutyServiceReconciler) applyPrefix(name string) string {
-	if r.ServicePrefix == "" {
-		return name
+// generatePdServiceName prepends the configured prefix if applicable
+// it will also add a random suffix of a given length (to overcome pagerduty's flat namespace for service names)
+func (r *PagerdutyServiceReconciler) generatePdServiceName(name string, randomSuffixLen int) string {
+	if r.ServicePrefix != "" {
+		name = r.ServicePrefix + "-" + name
 	}
-	return r.ServicePrefix + "-" + name
+	if randomSuffixLen > 0 {
+		name = name + "-" + uniuri.NewLen(randomSuffixLen)
+	}
+	return name
 }
 
 func (r *PagerdutyServiceReconciler) escalationPolicyExists(policyId string) (bool, error) {
