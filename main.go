@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/PagerDuty/go-pagerduty"
@@ -63,10 +62,12 @@ func main() {
 	flag.Parse()
 
 	if pagerdutyAPIKey == "" {
-		log.Fatal("API key is required.")
+		setupLog.Info("API key is required.")
+		os.Exit(1)
 	}
 	if rulesetID == "" {
-		log.Fatal("Ruleset ID is required")
+		setupLog.Info("Ruleset ID is required")
+		os.Exit(1)
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))

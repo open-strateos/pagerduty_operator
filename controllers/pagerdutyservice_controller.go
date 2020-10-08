@@ -66,7 +66,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	escalationPolicy, err = r.PdClient.GetEscalationPolicy(spec.EscalationPolicy, &pagerduty.GetEscalationPolicyOptions{})
 	if escalationPolicy == nil {
 		delay := time.Second * 30
-		logger.Error(err, "Can't find the escalation policy %v. Will retry in %v", spec.EscalationPolicy, delay)
+		logger.Error(err, "Can't find the escalation policy. Will retry.", "policyID", spec.EscalationPolicy, "delay", delay)
 		return ctrl.Result{Requeue: true, RequeueAfter: delay}, nil
 	}
 
