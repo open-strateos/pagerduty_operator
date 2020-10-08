@@ -23,11 +23,11 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-type labelSpec struct {
-	key string `json:"key"`
+type LabelSpec struct {
+	Key string `json:"key"`
 
 	// +optional
-	value string `json:"value"`
+	Value string `json:"value"`
 }
 
 // PagerdutyServiceSpec defines the desired state of PagerdutyService
@@ -39,7 +39,7 @@ type PagerdutyServiceSpec struct {
 	EscalationPolicy string `json:"escalationPolicy"`
 
 	// +kubebuilder:validation:MinItems:=1
-	MatchLabels []labelSpec `json:"matchLabels"`
+	MatchLabels []LabelSpec `json:"matchLabels"`
 }
 
 // PagerdutyServiceStatus defines the observed state of PagerdutyService
@@ -48,7 +48,8 @@ type PagerdutyServiceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// +optional
-	ServiceID string `json:"serviceId,omitempty"`
+	ServiceID string `json:"serviceID,omitempty"`
+	RuleID    string `json:"ruleID,omitempty"`
 }
 
 // +kubebuilder:object:root=true

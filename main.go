@@ -18,9 +18,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/PagerDuty/go-pagerduty"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -49,7 +51,7 @@ func main() {
 	var enableLeaderElection bool
 	var pagerdutyAPIKey string
 	var servicePrefix string
-	var rulesetName string
+	var rulesetID string
 
 	flag.StringVar(&metricsAddr, "metrics-addr", getEnv("METRICS_ADDR", ":8080"), "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -57,11 +59,14 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&pagerdutyAPIKey, "api-key", getEnv("PAGERDUTY_API_KEY", ""), "Authorization key for the pagerduty API.")
 	flag.StringVar(&servicePrefix, "service-prefix", getEnv("PAGERDUTY_SERVICE_PREFIX", ""), "Prefix to be added to Pagerduty Service names")
-	flag.StringVar(&rulesetName, "ruleset", getEnv("PAGERDUTY_RULESET", "auto"), "Name of the ruleset to append routing rules to.")
+	flag.StringVar(&rulesetID, "ruleset", getEnv("PAGERDUTY_RULESET_ID", ""), "ID of the ruleset to append routing rules to.")
 	flag.Parse()
 
 	if pagerdutyAPIKey == "" {
 		log.Fatal("API key is required.")
+	}
+	if rulesetID == "" {
+		log.Fatal("Ruleset ID is required")
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
@@ -78,11 +83,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	pdClient := pagerduty.NewClient(pagerdutyAPIKey)
+	_ = getRulesetOrDie(pdClient, rulesetID)
+
 	if err = (&controllers.PagerdutyServiceReconciler{
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
 		Scheme:        mgr.GetScheme(),
-		APIKey:        pagerdutyAPIKey,
+		PdClient:      pdClient,
+		RulesetID:     rulesetID,
 		ServicePrefix: servicePrefix,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyService")
@@ -102,4 +111,13 @@ func getEnv(key string, defaultVal string) string {
 		return val
 	}
 	return defaultVal
+}
+
+func getRulesetOrDie(pdClient *pagerduty.Client, rulesetID string) *pagerduty.Ruleset {
+	ruleset, _, err := pdClient.GetRuleset(rulesetID)
+	if err != nil {
+		setupLog.Error(err, fmt.Sprintf("Ruleset %s does not exist", rulesetID))
+		os.Exit(1)
+	}
+	return ruleset
 }
