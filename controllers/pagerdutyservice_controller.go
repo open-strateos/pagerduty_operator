@@ -116,6 +116,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{}, err
 	}
 	kubeService.Status.ServiceID = pdService.ID
+	kubeService.Status.ServiceName = pdService.Name
 
 	err = r.Update(ctx, kubeService.DeepCopyObject())
 	return ctrl.Result{}, err

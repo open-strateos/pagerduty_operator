@@ -48,8 +48,9 @@ type PagerdutyServiceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// +optional
-	ServiceID string `json:"serviceID,omitempty"`
-	RuleID    string `json:"ruleID,omitempty"`
+	ServiceID   string `json:"pagerdutyServiceID,omitempty"`
+	ServiceName string `json:"pagerdutyServiceName,omitempty"`
+	RuleID      string `json:"ruleID,omitempty"`
 }
 
 // +kubebuilder:object:root=true
