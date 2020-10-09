@@ -31,6 +31,8 @@ import (
 	v1 "pagerduty-operator/api/v1"
 )
 
+const finalizerKey = "pagerdutyservice.core.strateos.com"
+
 // PagerdutyServiceReconciler reconciles a PagerdutyService object
 type PagerdutyServiceReconciler struct {
 	client.Client
@@ -57,11 +59,26 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 
 	logger.Info("Fetching PagerdutyService resource")
 	if err = r.Get(ctx, req.NamespacedName, &kubeService); err != nil {
-		logger.Error(err, "Unable to fetch PagerdutyService")
+		// logger.Error(err, "Unable to fetch PagerdutyService", "reasonForError", apierrors.ReasonForError(err))
+		logger.V(1).Info("Unable to fetch PagerdutyService")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	spec := kubeService.Spec
 	status := kubeService.Status
+
+	if kubeService.DeletionTimestamp.IsZero() {
+		kubeService.EnsureFinalizerExists(finalizerKey)
+	} else {
+		logger.Info("Resource is marked for deletion. Cleaning up.")
+		err = r.PdClient.DeleteService(kubeService.Status.ServiceID)
+		if err == nil {
+			logger.Info("Successfully deleted the pagerduty service")
+			// when everything is cleaned up, remove the finalizer, so k8s can delete the resource
+			kubeService.EnsureFinalizerRemoved(finalizerKey)
+			err = r.Update(ctx, kubeService.DeepCopyObject())
+		}
+		return ctrl.Result{}, err
+	}
 
 	var escalationPolicy *pagerduty.EscalationPolicy
 
@@ -74,10 +91,14 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 
 	var serviceExists bool
 	if status.ServiceID != "" { // Service might already exist
-		pdService, _ = r.PdClient.GetService(status.ServiceID, &pagerduty.GetServiceOptions{})
+		logger.Info("Fetching service from pagerduty", "serviceId", status.ServiceID)
+		pdService, err = r.PdClient.GetService(status.ServiceID, &pagerduty.GetServiceOptions{})
+		if err != nil {
+			return ctrl.Result{Requeue: true}, err
+		}
 		serviceExists = pdService != nil
 	}
-	if pdService == nil {
+	if !serviceExists {
 		pdService = &pagerduty.Service{}
 	}
 
@@ -94,10 +115,9 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		logger.Error(err, "Failed to create pagerduty service resource", "service", pdService)
 		return ctrl.Result{}, err
 	}
-
 	kubeService.Status.ServiceID = pdService.ID
-	err = r.Update(ctx, kubeService.DeepCopy())
 
+	err = r.Update(ctx, kubeService.DeepCopyObject())
 	return ctrl.Result{}, err
 }
 
