@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
@@ -57,9 +58,8 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	var pdService *pagerduty.Service
 	var err error
 
-	logger.Info("Fetching PagerdutyService resource")
+	logger.V(1).Info("Fetching PagerdutyService resource")
 	if err = r.Get(ctx, req.NamespacedName, &kubeService); err != nil {
-		// logger.Error(err, "Unable to fetch PagerdutyService", "reasonForError", apierrors.ReasonForError(err))
 		logger.V(1).Info("Unable to fetch PagerdutyService")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -108,7 +108,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if serviceExists {
 		pdService, err = r.PdClient.UpdateService(*pdService)
 	} else {
-		pdService.Name = r.generatePdServiceName(kubeService.Name, 6)
+		pdService.Name = r.generatePdServiceName(kubeService.Name, 0)
 		pdService, err = r.PdClient.CreateService(*pdService)
 	}
 	if err != nil {
@@ -118,18 +118,95 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	kubeService.Status.ServiceID = pdService.ID
 	kubeService.Status.ServiceName = pdService.Name
 
+	r.reconcileRoutingRules(&kubeService)
+
 	err = r.Update(ctx, kubeService.DeepCopyObject())
 	return ctrl.Result{}, err
+}
+
+func (r *PagerdutyServiceReconciler) reconcileRoutingRules(kubeService *corev1.PagerdutyService) error {
+	ruleset, _, err := r.PdClient.GetRuleset(r.RulesetID)
+	if err != nil {
+		return err
+	}
+
+	var rule *pagerduty.RulesetRule
+	ruleID := kubeService.Status.RuleID
+	ruleExists := ruleID != ""
+
+	if !ruleExists {
+		logger.Info("Creating new rule")
+		rule = &pagerduty.RulesetRule{
+			Ruleset: &pagerduty.APIObject{
+				ID: ruleset.ID,
+			},
+		}
+	} else {
+		logger.V(1).Info("Using existing rule")
+		rule, _, err = r.PdClient.GetRulesetRule(ruleset.ID, ruleID)
+		if err != nil {
+			return err
+		}
+	}
+
+	conditions := pagerduty.RuleConditions{
+		Operator: "and",
+	}
+	for _, labelSpec := range kubeService.Spec.MatchLabels {
+		subcondition := pagerduty.RuleSubcondition{
+			Operator: "contains",
+			Parameters: &pagerduty.ConditionParameter{
+				Path:  "details.firing",
+				Value: fmt.Sprintf("%s = %s", labelSpec.Key, labelSpec.Value),
+			},
+		}
+		conditions.RuleSubconditions = append(conditions.RuleSubconditions, &subcondition)
+	}
+	rule.Conditions = &conditions
+
+	serviceID := kubeService.Status.ServiceID
+	rule.Actions = &pagerduty.RuleActions{
+		Route: &pagerduty.RuleActionParameter{Value: serviceID},
+	}
+
+	if ruleExists {
+		rule, _, err = r.PdClient.UpdateRulesetRule(ruleset.ID, rule.ID, rule)
+		logger.Info("Updated routing rule", "rule", rule)
+	} else {
+		rule, _, err = r.PdClient.CreateRulesetRule(ruleset.ID, rule)
+		logger.Info("Created routing rule", "rule", rule)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	kubeService.Status.RuleID = rule.ID
+
+	return nil
 }
 
 func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *corev1.PagerdutyService) error {
 	logger.Info("Resource is marked for deletion. Cleaning up.")
 	var err error
-	err = r.PdClient.DeleteService(kubeService.Status.ServiceID)
-	if err != nil {
-		return err
+
+	ruleID := kubeService.Status.RuleID
+	if ruleID != "" {
+		err := r.PdClient.DeleteRulesetRule(r.RulesetID, ruleID)
+		if err != nil {
+			return err
+		}
+		logger.Info("Successfully deleted the routing rule")
 	}
-	logger.Info("Successfully deleted the pagerduty service")
+
+	serviceID := kubeService.Status.ServiceID
+	if serviceID != "" {
+		err = r.PdClient.DeleteService(kubeService.Status.ServiceID)
+		if err != nil {
+			return err
+		}
+		logger.Info("Successfully deleted the pagerduty service")
+	}
 
 	return nil
 }

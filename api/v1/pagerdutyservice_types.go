@@ -26,7 +26,6 @@ import (
 type LabelSpec struct {
 	Key string `json:"key"`
 
-	// +optional
 	Value string `json:"value"`
 }
 
