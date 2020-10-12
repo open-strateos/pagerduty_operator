@@ -71,6 +71,15 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
+	// k8sManager, err := ctrl.NewManager(cfg, ctrl.options{Scheme: scheme.Scheme})
+	// Expect(err).ToNot(HaveOccurred())
+
+	// err = (&PagerdutyServiceReconciler{
+	// 	Client: k8sManager.GetClient(),
+	// 	Log:    ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
+	// }).SetupWithManager(k8sManager)
+	// Expect(err).ToNot(HaveOccurred())
+
 	close(done)
 }, 60)
 
