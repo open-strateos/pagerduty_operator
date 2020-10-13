@@ -17,10 +17,12 @@ var okResponse = &http.Response{
 type PagerdutyClientMock struct {
 	service     *pd.Service
 	rulesetRule *pd.RulesetRule
+
+	updateServiceCalled bool
 }
 
 func (pdc *PagerdutyClientMock) GetEscalationPolicy(id string, opt *pd.GetEscalationPolicyOptions) (*pd.EscalationPolicy, error) {
-	return &pd.EscalationPolicy{}, nil
+	return &pd.EscalationPolicy{APIObject: pd.APIObject{ID: id}}, nil
 }
 
 func (pdc *PagerdutyClientMock) GetService(id string, opts *pd.GetServiceOptions) (*pd.Service, error) {
@@ -28,6 +30,7 @@ func (pdc *PagerdutyClientMock) GetService(id string, opts *pd.GetServiceOptions
 }
 
 func (pdc *PagerdutyClientMock) UpdateService(service pd.Service) (*pd.Service, error) {
+	pdc.updateServiceCalled = true
 	pdc.service = &service
 	return pdc.service, nil
 }

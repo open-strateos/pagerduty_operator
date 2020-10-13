@@ -44,10 +44,9 @@ var _ = Describe("PagerdutyService controller", func() {
 
 	ctx := context.Background()
 	var pdService *pagerdutyAPIV1.PagerdutyService
+	var serviceNamespacedName types.NamespacedName
 
 	When("Creating a PagerdutyService", func() {
-
-		var serviceNamespacedName types.NamespacedName
 
 		It("Should start with nil values for service and rule", func() {
 			Expect(pdClientMock.service).Should(BeNil())
@@ -101,6 +100,32 @@ var _ = Describe("PagerdutyService controller", func() {
 				return len(service.ObjectMeta.Finalizers)
 			}, timeout, interval).Should(BeNumerically(">", 0))
 		})
+	})
+
+	When("Updating the PagerdutyService", func() {
+
+		It("Should successfully update", func() {
+			Expect(k8sClient.Get(ctx, serviceNamespacedName, pdService)).To(Succeed())
+			pdService.Spec.Description = "aaaaa"
+			pdService.Spec.EscalationPolicy = "bbbbb"
+			Expect(k8sClient.Update(ctx, pdService)).To(Succeed())
+		})
+
+		It("Should also update the service in pagerduty", func() {
+
+			Eventually(func() bool {
+				return pdClientMock.updateServiceCalled
+			}).Should(BeTrue())
+
+			Eventually(func() string {
+				return pdClientMock.service.Description
+			}).Should(Equal(pdService.Spec.Description))
+
+			Eventually(func() string {
+				return pdClientMock.service.EscalationPolicy.ID
+			}).Should(Equal(pdService.Spec.EscalationPolicy))
+		})
+
 	})
 
 	When("Deleting PagerdutyService", func() {
