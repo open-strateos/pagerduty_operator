@@ -17,8 +17,6 @@ var okResponse = &http.Response{
 type PagerdutyClientMock struct {
 	service     *pd.Service
 	rulesetRule *pd.RulesetRule
-
-	serviceCreated bool
 }
 
 func (pdc *PagerdutyClientMock) GetEscalationPolicy(id string, opt *pd.GetEscalationPolicyOptions) (*pd.EscalationPolicy, error) {
@@ -37,7 +35,6 @@ func (pdc *PagerdutyClientMock) UpdateService(service pd.Service) (*pd.Service, 
 func (pdc *PagerdutyClientMock) CreateService(service pd.Service) (*pd.Service, error) {
 	service.ID = testID
 	pdc.service = &service
-	pdc.serviceCreated = true
 	return &service, nil
 }
 

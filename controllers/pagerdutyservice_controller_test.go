@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +55,6 @@ var _ = Describe("PagerdutyService controller", func() {
 		})
 
 		It("Should create successfully", func() {
-
 			pdService = loadPdServiceFromYaml(pdServiceYaml)
 			serviceNamespacedName = getNamespacedName(pdService)
 			Expect(pdService.Name).ShouldNot(BeEmpty())
@@ -64,8 +64,14 @@ var _ = Describe("PagerdutyService controller", func() {
 
 		It("Should eventually create a service", func() {
 			Eventually(func() bool {
-				return pdClientMock.serviceCreated
+				return pdClientMock.service != nil
 			}, timeout, interval).Should(BeTrue())
+		})
+
+		It("Should have a correctly prefixed name", func() {
+			Eventually(func() string {
+				return pdClientMock.service.Name
+			}, timeout, interval).Should(Equal(fmt.Sprintf("%s-%s", servicePrefix, pdService.Name)))
 		})
 
 		It("Should eventually create a rule", func() {
@@ -98,6 +104,11 @@ var _ = Describe("PagerdutyService controller", func() {
 	})
 
 	When("Deleting PagerdutyService", func() {
+		It("Mock should intially have populated resources", func() {
+			Expect(pdClientMock.service).ToNot(BeNil())
+			Expect(pdClientMock.rulesetRule).ToNot(BeNil())
+		})
+
 		It("Should deleteSuccesfully", func() {
 			Expect(k8sClient.Delete(ctx, pdService)).To(Succeed())
 		})
