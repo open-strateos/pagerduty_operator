@@ -13,7 +13,8 @@ var okResponse = &http.Response{
 	StatusCode: 200,
 }
 
-// PagerdutyClientMock mocks out the client so can test against it.
+// PagerdutyClientMock mocks out the client so we can test against it.
+// It stores a little bet of state so we can verify which calls were made.
 type PagerdutyClientMock struct {
 	service     *pd.Service
 	rulesetRule *pd.RulesetRule
