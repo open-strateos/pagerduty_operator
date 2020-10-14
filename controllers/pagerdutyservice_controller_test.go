@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -161,9 +160,7 @@ var _ = Describe("PagerdutyService controller", func() {
 
 func getNamespacedName(service *pagerdutyAPIV1.PagerdutyService) types.NamespacedName {
 	key, err := runtimeClient.ObjectKeyFromObject(service)
-	if err != nil {
-		log.Fatal(err)
-	}
+	Expect(err).NotTo(HaveOccurred())
 	return key
 }
 
