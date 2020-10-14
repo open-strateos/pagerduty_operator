@@ -20,6 +20,7 @@ pipeline {
             steps {
                 sh make test
             }
+        }
 
         stage('Build') {
             parallel {
