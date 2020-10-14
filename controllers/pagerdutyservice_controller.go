@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
@@ -40,7 +41,7 @@ type PagerdutyServiceReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	PdClient      *pagerduty.Client
+	PdClient      PagerdutyInterface
 	RulesetID     string
 	ServicePrefix string // append to service names
 }
@@ -235,4 +236,18 @@ func (r *PagerdutyServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.PagerdutyService{}).
 		Complete(r)
+}
+
+// PagerdutyInterface allows us to write a fake client for testing
+type PagerdutyInterface interface {
+	GetEscalationPolicy(id string, opt *pagerduty.GetEscalationPolicyOptions) (*pagerduty.EscalationPolicy, error)
+	GetService(id string, opts *pagerduty.GetServiceOptions) (*pagerduty.Service, error)
+	UpdateService(service pagerduty.Service) (*pagerduty.Service, error)
+	CreateService(service pagerduty.Service) (*pagerduty.Service, error)
+	GetRuleset(id string) (*pagerduty.Ruleset, *http.Response, error)
+	GetRulesetRule(ruleID string, rulesetID string) (*pagerduty.RulesetRule, *http.Response, error)
+	UpdateRulesetRule(ruleID string, rulesetID string, rule *pagerduty.RulesetRule) (*pagerduty.RulesetRule, *http.Response, error)
+	CreateRulesetRule(ruleID string, rule *pagerduty.RulesetRule) (*pagerduty.RulesetRule, *http.Response, error)
+	DeleteRulesetRule(ruleID string, rulesetID string) error
+	DeleteService(id string) error
 }
