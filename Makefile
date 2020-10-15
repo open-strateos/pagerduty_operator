@@ -3,6 +3,8 @@
 IMG ?= controller:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
+# output manifests to this directory
+OUTPUT_DIR = manifests
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -37,6 +39,12 @@ uninstall: manifests
 deploy: manifests
 	cd config/manager && kustomize edit set image controller=${IMG}
 	kustomize build config/default | kubectl apply -f -
+
+# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+output_manifests: manifests
+	mkdir -p $(OUTPUT_DIR)
+	cd config/manager && kustomize edit set image controller=${IMG}
+	kustomize build config/default > $(OUTPUT_DIR)/pagerduty-operator.yaml
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
