@@ -9,7 +9,7 @@ pipeline {
     }
     environment {
         AWS_DEFAULT_REGION = "us-west-2"
-        IMG = IMAGE_REPO + ':' + DOCKER_TAG
+        IMG = '${IMAGE_REPO}:${DOCKER_TAG}'
     }
     options {
         skipDefaultCheckout()
@@ -23,21 +23,31 @@ pipeline {
         }
 
         stage('Build') {
-            parallel {
-                stage('Docker') {
-                    sh "make docker-build"
-                }
+            steps {
+                parallel {
+                    stage('Docker') {
+                        steps {
+                            sh "make docker-build"
+                        }
+                    }
 
-                stage('Manifests') {
-                    sh make output-manifests
+                    stage('Manifests') {
+                        steps {
+                            sh "make output-manifests"
+                        }
+                    }
                 }
             }
         }
 
         stage ('Push') {
-            parallel {
-                stage ('docker push') {
-                    sh "make docker-push"
+            steps {
+                parallel {
+                    stage ('docker push') {
+                        steps {
+                            sh "make docker-push"
+                        }
+                    }
                 }
             }
         }
