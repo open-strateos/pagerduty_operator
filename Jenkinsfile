@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                sh "docker built --target tester ."
+                sh "docker build --target tester ."
             }
         }
 
