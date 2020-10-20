@@ -1,7 +1,7 @@
 #!groovy
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.BRANCH_NAME
+def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
 
 pipeline {
     agent {
@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                sh "docker build --target tester ."
+                sh "docker build --target tester ${WORKSPACE}"
             }
         }
 
