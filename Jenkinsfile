@@ -18,18 +18,18 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                sh make test
+                sh "docker built --target tester ."
             }
         }
 
         stage('Build') {
             parallel {
                 stage('Docker') {
-                    sh make docker-build
+                    sh "make docker-build"
                 }
 
                 stage('Manifests') {
-                    sh make manifests
+                    sh make output-manifests
                 }
             }
         }
@@ -37,7 +37,7 @@ pipeline {
         stage ('Push') {
             parallel {
                 stage ('docker push') {
-                    sh make docker-push
+                    sh "make docker-push"
                 }
             }
         }

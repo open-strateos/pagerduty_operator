@@ -17,6 +17,16 @@ COPY controllers/ controllers/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
+# test
+FROM builder as tester
+ADD https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.1/kubebuilder_2.3.1_linux_amd64.tar.gz /tmp
+WORKDIR /tmp
+# install the control plane
+RUN tar -xvf kubebuilder_2.3.1_linux_amd64.tar.gz && mv kubebuilder_2.3.1_linux_amd64 /usr/local/kubebuilder
+WORKDIR /workspace
+COPY Makefile Makefile
+RUN make test
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
