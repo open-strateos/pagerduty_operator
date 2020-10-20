@@ -18,6 +18,7 @@ pipeline {
     stages {
         stage('Test') {
             steps {
+                sh "ls -la ${WORKSPACE}"
                 sh "docker build --target tester ${WORKSPACE}"
             }
         }
