@@ -24,31 +24,16 @@ pipeline {
 
         stage('Build') {
             steps {
-                parallel {
-                    stage('Docker') {
-                        steps {
-                            sh "make docker-build"
-                        }
-                    }
-
-                    stage('Manifests') {
-                        steps {
-                            sh "make output-manifests"
-                        }
-                    }
-                }
+                parallel(
+                    "Docker": { sh "make docker-build" },
+                    "Manifests": { sh "make output-manifests" }
+                )
             }
         }
 
         stage ('Push') {
             steps {
-                parallel {
-                    stage ('docker push') {
-                        steps {
-                            sh "make docker-push"
-                        }
-                    }
-                }
+                sh "make docker-push"
             }
         }
     }
