@@ -1,0 +1,23 @@
+FROM golang:1.13
+
+# install the control plane
+ADD https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.1/kubebuilder_2.3.1_linux_amd64.tar.gz /tmp
+WORKDIR /tmp
+RUN tar -xvf kubebuilder_2.3.1_linux_amd64.tar.gz && mv kubebuilder_2.3.1_linux_amd64 /usr/local/kubebuilder
+
+# install kustomize
+WORKDIR /usr/local/bin
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+
+WORKDIR /workspace
+
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+
+# Copy the rest of the workspace
+COPY . /workspace
+ENTRYPOINT ["make"]
