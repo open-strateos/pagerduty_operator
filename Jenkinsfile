@@ -11,9 +11,6 @@ pipeline {
         AWS_DEFAULT_REGION = "us-west-2"
         IMG = '${IMAGE_REPO}:${DOCKER_TAG}'
     }
-    options {
-        skipDefaultCheckout()
-    }
 
     stages {
         stage('Test') {
