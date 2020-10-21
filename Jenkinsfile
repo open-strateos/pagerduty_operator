@@ -2,6 +2,7 @@
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
 def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
+def CI_IMAGE = "pagerdut-operator-ci:${env.BRANCH_NAME}"
 
 pipeline {
     agent {
@@ -13,18 +14,24 @@ pipeline {
     }
 
     stages {
+
+        stage("Build CI Image") {
+            steps {
+                sh "docker build -f Dockerfile.ci -t ${CI_IMAGE} ${WORKSPACE}"
+            }
+        }
+
         stage('Test') {
             steps {
-                sh "ls -la ${WORKSPACE}"
-                sh "docker build --target tester ${WORKSPACE}"
+                sh "docker run --rm ${CI_IMAGE} test"
             }
         }
 
         stage('Build') {
             steps {
                 parallel(
-                    "Docker": { sh "docker build . -t ${IMG}" },
-                    "Manifests": { sh "make output-manifests" }
+                    "Manifests": { sh "docker run --rm ${CI_IMAGE} output_manifests" }
+                    "Deployment Image": { sh "docker build -t ${IMG} ." },
                 )
             }
         }
@@ -34,7 +41,7 @@ pipeline {
                 branch "main"
             }
             steps {
-                sh "make docker-push"
+                sh "docker push ${IMG}"
             }
         }
     }
