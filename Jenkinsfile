@@ -30,8 +30,8 @@ pipeline {
         stage('Build') {
             steps {
                 parallel(
-                    "Manifests": { sh "docker run --rm ${CI_IMAGE} output_manifests" }
-                    "Deployment Image": { sh "docker build -t ${IMG} ." },
+                    "Manifests": { sh "docker run --rm ${CI_IMAGE} output_manifests" },
+                    "Deployment Image": { sh "docker build -t ${IMG} ." }
                 )
             }
         }
