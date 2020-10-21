@@ -3,6 +3,7 @@
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
 def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
 def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
+def RELEASE_TAG = "${env.BRANCH_NAME}-${env.GIT_COMMIT.take(8)}"
 
 pipeline {
     agent {
@@ -30,7 +31,7 @@ pipeline {
         stage('Build') {
             steps {
                 parallel(
-                    "Manifests": { sh "docker run --rm ${CI_IMAGE} output_manifests" },
+                    "Manifests": { sh "docker run --rm --env IMG=${IMG}  ${CI_IMAGE} output_manifests" },
                     "Deployment Image": { sh "docker build -t ${IMAGE_REPO}:${DOCKER_TAG} ." }
                 )
             }
@@ -42,6 +43,7 @@ pipeline {
             }
             steps {
                 sh "docker push ${IMG}"
+                sh "DOCKER RUN --RM --env IMG=${IMG} ${CI_IMAGE} release RELEASE_TAG=${RELEASE_TAG}"
             }
         }
     }
