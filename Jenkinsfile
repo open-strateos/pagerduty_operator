@@ -2,7 +2,7 @@
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
 def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
-def CI_IMAGE = "pagerdut-operator-ci:${env.BRANCH_NAME}"
+def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
 
 pipeline {
     agent {
