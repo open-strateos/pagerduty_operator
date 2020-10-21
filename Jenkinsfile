@@ -31,7 +31,7 @@ pipeline {
             steps {
                 parallel(
                     "Manifests": { sh "docker run --rm ${CI_IMAGE} output_manifests" },
-                    "Deployment Image": { sh "docker build -t ${IMG} ." }
+                    "Deployment Image": { sh "docker build -t ${IMAGE_REPO}:${DOCKER_TAG} ." }
                 )
             }
         }

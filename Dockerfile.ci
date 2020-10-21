@@ -7,6 +7,9 @@ RUN tar -xvf kubebuilder_2.3.1_linux_amd64.tar.gz && mv kubebuilder_2.3.1_linux_
 
 WORKDIR /workspace
 
+# install kustomize
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
