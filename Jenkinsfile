@@ -1,9 +1,10 @@
 #!groovy
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
+def GIT_COMMIT = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
 def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
-def RELEASE_TAG = "${env.BRANCH_NAME}-${env.GIT_COMMIT.take(8)}"
+def RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT}"
 def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
 
 pipeline {
