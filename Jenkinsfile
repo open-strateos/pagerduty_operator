@@ -4,6 +4,7 @@ def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerdut
 def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : env.GIT_COMMIT
 def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
 def RELEASE_TAG = "${env.BRANCH_NAME}-${env.GIT_COMMIT.take(8)}"
+def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
 
 pipeline {
     agent {
@@ -43,7 +44,7 @@ pipeline {
             }
             steps {
                 sh "docker push ${IMG}"
-                sh "DOCKER RUN --RM --env IMG=${IMG} ${CI_IMAGE} release RELEASE_TAG=${RELEASE_TAG}"
+                sh "docker run --rm --env IMG=${IMG} --env GITHUB_TOKEN=${GITHUB_TOKEN} ${CI_IMAGE} release RELEASE_TAG=${RELEASE_TAG}"
             }
         }
     }
