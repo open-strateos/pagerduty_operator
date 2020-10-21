@@ -23,13 +23,16 @@ pipeline {
         stage('Build') {
             steps {
                 parallel(
-                    "Docker": { sh "make docker-build" },
+                    "Docker": { sh "docker build . -t ${IMG}" },
                     "Manifests": { sh "make output-manifests" }
                 )
             }
         }
 
         stage ('Push') {
+            when {
+                branch "main"
+            }
             steps {
                 sh "make docker-push"
             }
