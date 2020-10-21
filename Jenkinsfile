@@ -1,7 +1,8 @@
 #!groovy
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-def GIT_COMMIT = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+// def GIT_COMMIT = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+def GIT_COMMIT = env.GIT_COMMIT
 def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
 def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
 def RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT}"
@@ -20,6 +21,7 @@ pipeline {
 
         stage("Build CI Image") {
             steps {
+                sh "echo $GIT_COMMIT"
                 sh "docker build -f Dockerfile.ci -t ${CI_IMAGE} ${WORKSPACE}"
             }
         }
