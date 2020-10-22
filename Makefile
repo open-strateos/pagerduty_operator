@@ -5,6 +5,10 @@ IMG ?= controller:latest
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 # output manifests to this directory
 OUTPUT_DIR = manifests
+# Name of the github repo
+export GITHUB_USER = strateos
+export GITHUB_REPO = pagerduty-operator
+RELEASE_TAG ?= "SETME"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -69,6 +73,10 @@ docker-build: test
 # Push the docker image
 docker-push:
 	docker push ${IMG}
+
+release: output_manifests
+	github-release release --tag ${RELEASE_TAG}
+	github-release upload --tag ${RELEASE_TAG} --name pagerduty-operator.yaml --file ${OUTPUT_DIR}/pagerduty-operator.yaml
 
 # find or download controller-gen
 # download controller-gen if necessary
