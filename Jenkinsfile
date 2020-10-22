@@ -26,7 +26,7 @@ pipeline {
                     DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
                     CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
                     RELEASE_IMAGE = "${IMAGE_REPO}:${DOCKER_TAG}"
-                    RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT}"
+                    RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT.take(8)}"
                 }
             }
         }
