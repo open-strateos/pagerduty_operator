@@ -9,17 +9,22 @@ pipeline {
         AWS_DEFAULT_REGION = "us-west-2"
     }
 
+    def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
+    def GIT_COMMIT
+    def DOCKER_TAG
+    def CI_IMAGE
+    def RELEASE_IMAGE
+    def RELEASE_TAG
+    def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
     stages {
 
         stage("Define Variables") {
             steps {
-                def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-                def GIT_COMMIT = env.GIT_COMMIT
-                def DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
-                def CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
-                def RELEASE_IMAGE = "${IMAGE_REPO}:${DOCKER_TAG}"
-                def RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT}"
-                def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+                GIT_COMMIT = env.GIT_COMMIT
+                DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
+                CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
+                RELEASE_IMAGE = "${IMAGE_REPO}:${DOCKER_TAG}"
+                RELEASE_TAG = "${env.BRANCH_NAME}-${GIT_COMMIT}"
             }
         }
 
