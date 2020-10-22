@@ -33,7 +33,6 @@ pipeline {
 
         stage("Build CI Image") {
             steps {
-                sh "echo $GIT_COMMIT"
                 sh "docker build -f Dockerfile.ci -t ${CI_IMAGE} ${WORKSPACE}"
             }
         }
