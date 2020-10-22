@@ -10,16 +10,17 @@ pipeline {
     }
 
     def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
+    def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
     def GIT_COMMIT
     def DOCKER_TAG
     def CI_IMAGE
     def RELEASE_IMAGE
     def RELEASE_TAG
-    def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+
     stages {
 
         stage("Define Variables") {
-            steps {
+            script {
                 GIT_COMMIT = env.GIT_COMMIT
                 DOCKER_TAG = (env.BRANCH_NAME == 'main') ? 'latest' : GIT_COMMIT
                 CI_IMAGE = "pagerduty-operator-ci:${env.BRANCH_NAME}"
