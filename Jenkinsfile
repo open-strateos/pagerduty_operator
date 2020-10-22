@@ -1,5 +1,13 @@
 #!groovy
 
+def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
+def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+def GIT_COMMIT
+def DOCKER_TAG
+def CI_IMAGE
+def RELEASE_IMAGE
+def RELEASE_TAG
+
 
 pipeline {
     agent {
@@ -8,14 +16,6 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = "us-west-2"
     }
-
-    def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-    def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
-    def GIT_COMMIT
-    def DOCKER_TAG
-    def CI_IMAGE
-    def RELEASE_IMAGE
-    def RELEASE_TAG
 
     stages {
 
