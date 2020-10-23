@@ -61,7 +61,7 @@ pipeline {
             }
             steps {
                 sh "docker push ${RELEASE_IMAGE}"
-                sh "docker run --rm --env IMG=${IMG} --env GITHUB_TOKEN=${GITHUB_TOKEN} ${CI_IMAGE} release RELEASE_TAG=${RELEASE_TAG}"
+                sh "docker run --rm --env IMG=${RELEASE_IMAGE} --env 'GITHUB_TOKEN=${GITHUB_TOKEN}' ${CI_IMAGE} release RELEASE_TAG=${RELEASE_TAG}"
             }
         }
     }
