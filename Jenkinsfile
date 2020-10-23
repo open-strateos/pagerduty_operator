@@ -1,7 +1,8 @@
 #!groovy
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
-def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+// def GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+def GITHUB_TOKEN = credentials('ted-github-token')
 def GIT_COMMIT
 def DOCKER_TAG
 def CI_IMAGE
