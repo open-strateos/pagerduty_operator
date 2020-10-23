@@ -54,7 +54,10 @@ pipeline {
 
         stage ('Push') {
             when {
-                branch "main"
+                allOf {
+                    branch "main"
+                    tag "release-*"
+                }
             }
             steps {
                 sh "docker push ${RELEASE_IMAGE}"
