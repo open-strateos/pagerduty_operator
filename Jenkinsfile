@@ -14,7 +14,7 @@ pipeline {
     }
     environment {
         AWS_DEFAULT_REGION = "us-west-2"
-        GITHUB_TOKEN = credentials('buildsecret.github_api_token')
+        GITHUB_TOKEN = credentials('ted-github-token')
     }
 
     stages {
