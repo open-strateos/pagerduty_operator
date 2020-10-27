@@ -57,7 +57,8 @@ pipeline {
             when { tag "release-*" }
             steps {
                 sh "docker tag ${RELEASE_IMAGE} ${LATEST_RELEASE}"
-                sh "docker push ${RELEASE_IMAGE}"
+                sh "docker tag ${RELEASE_IMAGE} ${IMAGE_REPO}:${TAG_NAME}"
+                sh "docker push ${IMAGE_REPO}:${TAG_NAME}"
                 sh "docker push ${LATEST_RELEASE}"
                 sh "docker run --rm --env IMG=${RELEASE_IMAGE} --env 'GITHUB_TOKEN=${GITHUB_TOKEN}' ${CI_IMAGE} release RELEASE_TAG=${TAG_NAME}"
             }
