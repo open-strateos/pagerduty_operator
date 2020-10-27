@@ -56,6 +56,7 @@ pipeline {
         stage ('Push') {
             when { tag "release-*" }
             steps {
+                sh "aws ecr get-login --no-include-email | sh"
                 sh "docker tag ${RELEASE_IMAGE} ${LATEST_RELEASE}"
                 sh "docker tag ${RELEASE_IMAGE} ${IMAGE_REPO}:${TAG_NAME}"
                 sh "docker push ${IMAGE_REPO}:${TAG_NAME}"
