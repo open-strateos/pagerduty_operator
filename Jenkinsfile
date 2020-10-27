@@ -1,6 +1,7 @@
 #!groovy
 
 def IMAGE_REPO = "742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator"
+def LATEST_RELEASE = "${IMAGE_REPO}:latest"
 def GIT_COMMIT
 def DOCKER_TAG
 def CI_IMAGE
@@ -55,7 +56,9 @@ pipeline {
         stage ('Push') {
             when { tag "release-*" }
             steps {
+                sh "docker tag ${RELEASE_IMAGE} ${LATEST_RELEASE}"
                 sh "docker push ${RELEASE_IMAGE}"
+                sh "docker push ${LATEST_RELEASE}"
                 sh "docker run --rm --env IMG=${RELEASE_IMAGE} --env 'GITHUB_TOKEN=${GITHUB_TOKEN}' ${CI_IMAGE} release RELEASE_TAG=${TAG_NAME}"
             }
         }
