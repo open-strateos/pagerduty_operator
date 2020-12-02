@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
@@ -195,7 +196,11 @@ func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *core
 	if ruleID != "" {
 		err := r.PdClient.DeleteRulesetRule(r.RulesetID, ruleID)
 		if err != nil {
-			return err
+			if strings.Contains(err.Error(), "404") {
+				logger.Info(fmt.Sprintf("Unable to delete rule %s but it does not exist.", ruleID))
+			} else {
+				return err
+			}
 		}
 		logger.Info("Successfully deleted the routing rule")
 	}
@@ -204,6 +209,11 @@ func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *core
 	if serviceID != "" {
 		err = r.PdClient.DeleteService(kubeService.Status.ServiceID)
 		if err != nil {
+			if strings.Contains(err.Error(), "404") {
+				logger.Info(fmt.Sprintf("Tried to delete service %s but it does not exist.", serviceID))
+			} else {
+				return err
+			}
 			return err
 		}
 		logger.Info("Successfully deleted the pagerduty service")
