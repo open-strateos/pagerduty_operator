@@ -6,12 +6,16 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	pagerdutyAPIV1 "pagerduty-operator/api/v1"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -158,6 +162,80 @@ var _ = Describe("PagerdutyService controller", func() {
 	})
 })
 
+var _ = Describe("Test Escalation Policy finding logic", func() {
+	ctx := context.Background()
+
+	const secretName = "some_secret"
+	const secretKey = "some_key"
+	const escalationPolicyId = "1234ABC"
+
+	// Create the test secret
+	testSecret := corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: "default",
+		},
+		StringData: map[string]string{
+			secretKey: escalationPolicyId,
+		},
+	}
+
+	It("Should create the secret no problem", func() {
+		Expect(k8sClient).NotTo(BeNil())
+		err := k8sClient.Create(ctx, &testSecret)
+		Expect(err).Should(BeNil())
+		// Expect(k8sClient.Create(ctx, &testSecret)).Should(Succeed())
+		Expect(k8sManager.GetScheme()).NotTo(BeNil())
+	})
+
+	testReconciler := PagerdutyServiceReconciler{
+		Client: k8sClient,
+		Log:    ctrl.Log,
+		// Scheme:        k8sManager.GetScheme(),
+		PdClient:      &pdClientMock,
+		RulesetID:     "foobar",
+		ServicePrefix: "whatever",
+	}
+
+	serviceYamlWithSecretNameAndKey := fmt.Sprintf(`
+	---
+	apiVersion: core.strateos.com/v1
+	kind: PagerdutyService
+	metadata:
+	  name: test-service
+	  namespace: default
+	spec:	
+	  description: Testing the operator
+	  escalationPolicySecret:
+		  name: %s
+		  key: %s
+	  matchLabels:
+		  - key: foo
+			value: bar
+
+	`, secretName, secretKey)
+
+	When("Creating a pagerduty service with escalation policy name and key", func() {
+		pdService := loadPdServiceFromYaml(serviceYamlWithSecretNameAndKey)
+		It("Should create succesfully", func() {
+			// serviceNamespacedName := getNamespacedName(pdService)
+			Expect(pdService.Name).ShouldNot(BeEmpty())
+			Expect(pdService.Namespace).Should(BeIdenticalTo("default"))
+			Expect(k8sClient.Create(ctx, pdService)).Should(Succeed())
+		})
+
+		It("Should be able to fetch the secret", func() {
+			id, err := testReconciler.GetEscalationPolicyID(pdService)
+			Expect(err).Should(BeNil())
+			Expect(id).Should(Equal(escalationPolicyId))
+		})
+	})
+
+})
+
 func getNamespacedName(service *pagerdutyAPIV1.PagerdutyService) types.NamespacedName {
 	key, err := runtimeClient.ObjectKeyFromObject(service)
 	Expect(err).NotTo(HaveOccurred())
@@ -167,8 +245,12 @@ func getNamespacedName(service *pagerdutyAPIV1.PagerdutyService) types.Namespace
 func loadPdServiceFromYaml(yamlRep string) *pagerdutyAPIV1.PagerdutyService {
 	var decoder = scheme.Codecs.UniversalDeserializer()
 	obj, gkv, err := decoder.Decode([]byte(yamlRep), nil, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(gkv.Kind).Should(Equal(pagerdutyServiceKind))
-	pdService := obj.(*pagerdutyAPIV1.PagerdutyService)
+	It("Should validate reasonably", func() {
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(gkv.Kind).Should(Equal(pagerdutyServiceKind))
+		Expect(obj).ToNot(BeNil())
+	})
+	// pdService := obj.(*pagerdutyAPIV1.PagerdutyService)
+	pdService := &pagerdutyAPIV1.PagerdutyService{}
 	return pdService
 }

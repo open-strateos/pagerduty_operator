@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -30,8 +31,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	corev1 "pagerduty-operator/api/v1"
+	// corev1 "pagerduty-operator/api/v1"
 	v1 "pagerduty-operator/api/v1"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const finalizerKey = "pagerdutyservice.core.strateos.com"
@@ -82,9 +85,14 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{}, err
 	}
 
-	var escalationPolicy *pagerduty.EscalationPolicy
+	escalationPolicyID, err := r.GetEscalationPolicyID(&kubeService)
+	if err != nil {
+		logger.Info("Could not resolve the escalation policy ID. Will retry.")
+		return ctrl.Result{Requeue: true, RequeueAfter: time.Second * 30}, nil
+	}
 
-	escalationPolicy, err = r.PdClient.GetEscalationPolicy(spec.EscalationPolicy, &pagerduty.GetEscalationPolicyOptions{})
+	var escalationPolicy *pagerduty.EscalationPolicy
+	escalationPolicy, err = r.PdClient.GetEscalationPolicy(escalationPolicyID, &pagerduty.GetEscalationPolicyOptions{})
 	if escalationPolicy == nil {
 		delay := time.Second * 30
 		logger.Error(err, "Can't find the escalation policy. Will retry.", "policyID", spec.EscalationPolicy, "delay", delay)
@@ -126,7 +134,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	return ctrl.Result{}, err
 }
 
-func (r *PagerdutyServiceReconciler) reconcileRoutingRules(kubeService *corev1.PagerdutyService) error {
+func (r *PagerdutyServiceReconciler) reconcileRoutingRules(kubeService *v1.PagerdutyService) error {
 	ruleset, _, err := r.PdClient.GetRuleset(r.RulesetID)
 	if err != nil {
 		return err
@@ -188,7 +196,7 @@ func (r *PagerdutyServiceReconciler) reconcileRoutingRules(kubeService *corev1.P
 	return nil
 }
 
-func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *corev1.PagerdutyService) error {
+func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *v1.PagerdutyService) error {
 	logger.Info("Resource is marked for deletion. Cleaning up.")
 	var err error
 
@@ -234,6 +242,44 @@ func (r *PagerdutyServiceReconciler) generatePdServiceName(name string, randomSu
 	return name
 }
 
+// GetEscalationPolicyID returns an escalation policy ID for the given service,
+// If an EscalationPolicy is explicitly defined it will return that.
+// Otherwise it will look for an EscalationPolicySecret, fetch the corresponding Secret, and attempt to look up the policy id
+func (r *PagerdutyServiceReconciler) GetEscalationPolicyID(kubePdService *v1.PagerdutyService) (string, error) {
+
+	// Use the explicit policy ID if supplied
+	if kubePdService.Spec.EscalationPolicy != "" {
+		return kubePdService.Spec.EscalationPolicy, nil
+	}
+
+	secretSpec := kubePdService.Spec.EscalationPolicySecret
+
+	// Fail if a secret name was not supplied
+	if secretSpec.Name == "" {
+		return "", fmt.Errorf("PagerdutyService %s did not specify an escalation policy ID or Secret", kubePdService.ObjectMeta.Name)
+	}
+
+	ctx := context.Background()
+	namespace := kubePdService.ObjectMeta.Namespace
+	secret := corev1.Secret{}
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: secretSpec.Name}, &secret)
+	if err != nil {
+		return "", err
+	}
+
+	if b64val, ok := secret.Data[secretSpec.Key]; ok {
+		var val []byte
+		_, err := b64.StdEncoding.Decode(val, b64val)
+		if err != nil {
+			return "", err
+		}
+
+		return string(val), nil
+	}
+	return "", fmt.Errorf("Could not find key %s in secret %s", secretSpec.Key, secretSpec.Name)
+
+}
+
 func (r *PagerdutyServiceReconciler) escalationPolicyExists(policyId string) (bool, error) {
 	policy, err := r.PdClient.GetEscalationPolicy(policyId, &pagerduty.GetEscalationPolicyOptions{})
 	if policy != nil {
@@ -244,7 +290,7 @@ func (r *PagerdutyServiceReconciler) escalationPolicyExists(policyId string) (bo
 
 func (r *PagerdutyServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.PagerdutyService{}).
+		For(&v1.PagerdutyService{}).
 		Complete(r)
 }
 

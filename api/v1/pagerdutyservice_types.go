@@ -29,13 +29,22 @@ type LabelSpec struct {
 	Value string `json:"value"`
 }
 
+// EscalationPolicySecretSpec allows you to retrieve the escalation policy from a secret
+// in the same namespace as the PagerdutyService
+type EscalationPolicySecretSpec struct {
+	Name string `json:"name"`
+
+	Key string `json:"key"`
+}
+
 // PagerdutyServiceSpec defines the desired state of PagerdutyService
 type PagerdutyServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Description      string `json:"description,omitempty"`
-	EscalationPolicy string `json:"escalationPolicy"`
+	Description            string                     `json:"description,omitempty"`
+	EscalationPolicy       string                     `json:"escalationPolicy,omitEmpty"`
+	EscalationPolicySecret EscalationPolicySecretSpec `json:"escalationPolicySecret,omitEmpty"`
 
 	// +kubebuilder:validation:MinItems:=1
 	MatchLabels []LabelSpec `json:"matchLabels"`
