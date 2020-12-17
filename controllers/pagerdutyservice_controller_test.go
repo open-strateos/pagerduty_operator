@@ -41,7 +41,7 @@ spec:
 
 var _ = Describe("PagerdutyService controller", func() {
 	// Timing parameters for "Eventually" polling
-	timeout := "1s"
+	timeout := "3s"
 	interval := "10ms"
 
 	ctx := context.Background()

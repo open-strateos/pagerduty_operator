@@ -85,7 +85,8 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 
 	escalationPolicyID, err := r.GetEscalationPolicyID(&kubeService)
 	if err != nil {
-		logger.Info("Could not resolve the escalation policy ID. Will retry.")
+		logger.Info("Could not resolve the escalation policy ID. Will retry.", "pdService", kubeService.Name)
+		r.UpdateStatus(&kubeService, err)
 		return ctrl.Result{Requeue: true, RequeueAfter: time.Second * 30}, nil
 	}
 
@@ -93,6 +94,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if escalationPolicy == nil {
 		delay := time.Second * 30
 		logger.Error(err, "Can't find the escalation policy. Will retry.", "policyID", spec.EscalationPolicy, "delay", delay)
+		r.UpdateStatus(&kubeService, fmt.Errorf("Unable to get the escaltionPolciy %s from Pagerduty", escalationPolicyID))
 		return ctrl.Result{Requeue: true, RequeueAfter: delay}, nil
 	}
 
@@ -120,6 +122,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	}
 	if err != nil {
 		logger.Error(err, "Failed to create pagerduty service resource", "service", pdService)
+		r.UpdateStatus(&kubeService, fmt.Errorf("Failed to create pagerduty service"))
 		return ctrl.Result{}, err
 	}
 	kubeService.Status.ServiceID = pdService.ID
@@ -128,6 +131,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	r.reconcileRoutingRules(&kubeService)
 
 	err = r.Update(ctx, kubeService.DeepCopyObject())
+	r.UpdateStatus(&kubeService, err)
 	return ctrl.Result{}, err
 }
 
@@ -227,6 +231,19 @@ func (r *PagerdutyServiceReconciler) destroyPagerdutyResources(kubeService *v1.P
 	return nil
 }
 
+// UpdateStatus sets the value of the service's Status.Status field to SUCCESS or ERROR
+// based on the value of the supplied error. It persists this to etcd immediately.
+func (r *PagerdutyServiceReconciler) UpdateStatus(service *v1.PagerdutyService, err error) {
+	var status string
+	if err == nil {
+		status = "SUCCESS"
+	} else {
+		status = fmt.Sprintf("ERROR: %s", err.Error())
+	}
+	service.Status.Status = status
+	r.Update(context.Background(), service)
+}
+
 // generatePdServiceName prepends the configured prefix if applicable
 // it will also add a random suffix of a given length (to overcome pagerduty's flat namespace for service names)
 func (r *PagerdutyServiceReconciler) generatePdServiceName(name string, randomSuffixLen int) string {
@@ -253,12 +270,12 @@ func (r *PagerdutyServiceReconciler) GetEscalationPolicyID(kubePdService *v1.Pag
 
 	// Fail if a secret name was not supplied
 	if secretSpec.Name == "" {
-		return "", fmt.Errorf("PagerdutyService %s did not specify an escalation policy ID or Secret", kubePdService.ObjectMeta.Name)
+		return "", fmt.Errorf("No specified escalation policy ID or Secret")
 	}
 
 	// Fail if secret key was not supplied
 	if secretSpec.Key == "" {
-		return "", fmt.Errorf("PagerdutyService had EscalationPolicySecret.Name, but did not supply a value for EscalationPolicySecret.Key")
+		return "", fmt.Errorf("No value for EscalationPolicySecret.Key")
 	}
 
 	ctx := context.Background()
