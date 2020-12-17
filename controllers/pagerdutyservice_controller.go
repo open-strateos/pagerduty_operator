@@ -30,7 +30,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	// corev1 "pagerduty-operator/api/v1"
 	v1 "pagerduty-operator/api/v1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -90,8 +89,7 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{Requeue: true, RequeueAfter: time.Second * 30}, nil
 	}
 
-	var escalationPolicy *pagerduty.EscalationPolicy
-	escalationPolicy, err = r.PdClient.GetEscalationPolicy(escalationPolicyID, &pagerduty.GetEscalationPolicyOptions{})
+	escalationPolicy, err := r.PdClient.GetEscalationPolicy(escalationPolicyID, &pagerduty.GetEscalationPolicyOptions{})
 	if escalationPolicy == nil {
 		delay := time.Second * 30
 		logger.Error(err, "Can't find the escalation policy. Will retry.", "policyID", spec.EscalationPolicy, "delay", delay)

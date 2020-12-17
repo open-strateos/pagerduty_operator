@@ -41,7 +41,7 @@ spec:
 
 var _ = Describe("PagerdutyService controller", func() {
 	// Timing parameters for "Eventually" polling
-	timeout := "10s"
+	timeout := "1s"
 	interval := "10ms"
 
 	ctx := context.Background()
@@ -118,7 +118,6 @@ var _ = Describe("PagerdutyService controller", func() {
 			updatedPdService.Spec.Description = "aaaaa"
 			updatedPdService.Spec.EscalationPolicy = "bbbbb"
 			Expect(k8sClient.Update(ctx, &updatedPdService)).To(Succeed())
-			GinkgoWriter.Write([]byte("Updated the service\n"))
 		})
 
 		It("Should also update the service in pagerduty", func() {
