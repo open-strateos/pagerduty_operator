@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	b64 "encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -259,22 +258,22 @@ func (r *PagerdutyServiceReconciler) GetEscalationPolicyID(kubePdService *v1.Pag
 		return "", fmt.Errorf("PagerdutyService %s did not specify an escalation policy ID or Secret", kubePdService.ObjectMeta.Name)
 	}
 
+	// Fail if secret key was not supplied
+	if secretSpec.Key == "" {
+		return "", fmt.Errorf("PagerdutyService had EscalationPolicySecret.Name, but did not supply a value for EscalationPolicySecret.Key")
+	}
+
 	ctx := context.Background()
 	namespace := kubePdService.ObjectMeta.Namespace
 	secret := corev1.Secret{}
+
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: secretSpec.Name}, &secret)
 	if err != nil {
 		return "", err
 	}
 
-	if b64val, ok := secret.Data[secretSpec.Key]; ok {
-		var val []byte
-		_, err := b64.StdEncoding.Decode(val, b64val)
-		if err != nil {
-			return "", err
-		}
-
-		return string(val), nil
+	if policyIDValue, ok := secret.Data[secretSpec.Key]; ok {
+		return string(policyIDValue), nil
 	}
 	return "", fmt.Errorf("Could not find key %s in secret %s", secretSpec.Key, secretSpec.Name)
 
