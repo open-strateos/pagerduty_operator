@@ -33,8 +33,7 @@ type LabelSpec struct {
 // in the same namespace as the PagerdutyService
 type EscalationPolicySecretSpec struct {
 	Name string `json:"name"`
-
-	Key string `json:"key"`
+	Key  string `json:"key"`
 }
 
 // PagerdutyServiceSpec defines the desired state of PagerdutyService
