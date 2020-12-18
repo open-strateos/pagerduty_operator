@@ -112,12 +112,12 @@ var _ = Describe("PagerdutyService controller", func() {
 
 	When("Updating the PagerdutyService", func() {
 
+		updatedPdService := pagerdutyAPIV1.PagerdutyService{}
 		It("Should successfully update", func() {
 			// Sometimes the "fetch, modify, update" cycle requires retry to avoid
 			// a ResourceVersion conflict, presumably because the reconciler is updating
 			// the Status fields in the meantime.
 			Eventually(func() error {
-				updatedPdService := pagerdutyAPIV1.PagerdutyService{}
 				Expect(k8sClient.Get(ctx, serviceNamespacedName, &updatedPdService)).To(Succeed())
 				updatedPdService.Spec.Description = "aaaaa"
 				updatedPdService.Spec.EscalationPolicy = "bbbbb"
@@ -133,11 +133,11 @@ var _ = Describe("PagerdutyService controller", func() {
 
 			Eventually(func() string {
 				return pdClientMock.service.Description
-			}).Should(Equal(pdService.Spec.Description))
+			}).Should(Equal(updatedPdService.Spec.Description))
 
 			Eventually(func() string {
 				return pdClientMock.service.EscalationPolicy.ID
-			}).Should(Equal(pdService.Spec.EscalationPolicy))
+			}).Should(Equal(updatedPdService.Spec.EscalationPolicy))
 		})
 
 	})
