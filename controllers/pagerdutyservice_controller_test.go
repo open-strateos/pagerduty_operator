@@ -113,11 +113,16 @@ var _ = Describe("PagerdutyService controller", func() {
 	When("Updating the PagerdutyService", func() {
 
 		It("Should successfully update", func() {
-			updatedPdService := pagerdutyAPIV1.PagerdutyService{}
-			Expect(k8sClient.Get(ctx, serviceNamespacedName, &updatedPdService)).To(Succeed())
-			updatedPdService.Spec.Description = "aaaaa"
-			updatedPdService.Spec.EscalationPolicy = "bbbbb"
-			Expect(k8sClient.Update(ctx, &updatedPdService)).To(Succeed())
+			// Sometimes the "fetch, modify, update" cycle requires retry to avoid
+			// a ResourceVersion conflict, presumably because the reconciler is updating
+			// the Status fields in the meantime.
+			Eventually(func() error {
+				updatedPdService := pagerdutyAPIV1.PagerdutyService{}
+				Expect(k8sClient.Get(ctx, serviceNamespacedName, &updatedPdService)).To(Succeed())
+				updatedPdService.Spec.Description = "aaaaa"
+				updatedPdService.Spec.EscalationPolicy = "bbbbb"
+				return k8sClient.Update(ctx, &updatedPdService)
+			}, timeout, interval).Should(Succeed())
 		})
 
 		It("Should also update the service in pagerduty", func() {
