@@ -241,7 +241,7 @@ func (r *PagerdutyServiceReconciler) UpdateStatus(service *v1.PagerdutyService, 
 		status = fmt.Sprintf("ERROR: %s", err.Error())
 	}
 	service.Status.Status = status
-	r.Update(context.Background(), service)
+	r.Status().Update(context.Background(), service)
 }
 
 // generatePdServiceName prepends the configured prefix if applicable
