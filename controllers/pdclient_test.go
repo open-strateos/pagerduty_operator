@@ -14,12 +14,18 @@ var okResponse = &http.Response{
 }
 
 // PagerdutyClientMock mocks out the client so we can test against it.
-// It stores a little bet of state so we can verify which calls were made.
+// It stores a little bit of state so we can verify which calls were made.
 type PagerdutyClientMock struct {
 	service     *pd.Service
 	rulesetRule *pd.RulesetRule
 
 	updateServiceCalled bool
+}
+
+func (pdc *PagerdutyClientMock) Reset() {
+	pdc.service = nil
+	pdc.rulesetRule = nil
+	pdc.updateServiceCalled = false
 }
 
 func (pdc *PagerdutyClientMock) GetEscalationPolicy(id string, opt *pd.GetEscalationPolicyOptions) (*pd.EscalationPolicy, error) {
@@ -31,8 +37,8 @@ func (pdc *PagerdutyClientMock) GetService(id string, opts *pd.GetServiceOptions
 }
 
 func (pdc *PagerdutyClientMock) UpdateService(service pd.Service) (*pd.Service, error) {
-	pdc.updateServiceCalled = true
 	pdc.service = &service
+	pdc.updateServiceCalled = true
 	return pdc.service, nil
 }
 

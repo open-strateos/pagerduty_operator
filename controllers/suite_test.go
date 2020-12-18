@@ -44,6 +44,7 @@ var k8sClient client.Client
 var k8sManager manager.Manager
 var pdClientMock PagerdutyClientMock
 var testEnv *envtest.Environment
+var pagerdutyServiceReconciler PagerdutyServiceReconciler
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -80,14 +81,15 @@ var _ = BeforeSuite(func(done Done) {
 	// Set up reconciler with mock pagerduty client
 	pdClientMock = PagerdutyClientMock{}
 
-	err = (&PagerdutyServiceReconciler{
+	pagerdutyServiceReconciler = PagerdutyServiceReconciler{
 		Client: k8sManager.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
 
 		PdClient:      &pdClientMock,
 		RulesetID:     rulesetID,
 		ServicePrefix: servicePrefix,
-	}).SetupWithManager(k8sManager)
+	}
+	err = pagerdutyServiceReconciler.SetupWithManager((k8sManager))
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

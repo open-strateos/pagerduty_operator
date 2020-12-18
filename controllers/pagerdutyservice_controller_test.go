@@ -12,6 +12,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	pagerdutyAPIV1 "pagerduty-operator/api/v1"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -38,23 +41,29 @@ spec:
 
 var _ = Describe("PagerdutyService controller", func() {
 	// Timing parameters for "Eventually" polling
-	timeout := "1s"
+	timeout := "3s"
 	interval := "10ms"
 
 	ctx := context.Background()
 	var pdService *pagerdutyAPIV1.PagerdutyService
 	var serviceNamespacedName types.NamespacedName
+	var err error
 
 	When("Creating a PagerdutyService", func() {
 
+		pdClientMock.Reset()
 		It("Should start with nil values for service and rule", func() {
 			Expect(pdClientMock.service).Should(BeNil())
 			Expect(pdClientMock.rulesetRule).Should(BeNil())
+
+			//but not k8sClient
+			Expect(k8sClient).ToNot(BeNil())
 		})
 
 		It("Should create successfully", func() {
-			pdService = loadPdServiceFromYaml(pdServiceYaml)
+			pdService, err = loadPdServiceFromYaml(pdServiceYaml)
 			serviceNamespacedName = getNamespacedName(pdService)
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(pdService.Name).ShouldNot(BeEmpty())
 			Expect(pdService.Namespace).Should(BeIdenticalTo("default"))
 			Expect(k8sClient.Create(ctx, pdService)).Should(Succeed())
@@ -103,11 +112,17 @@ var _ = Describe("PagerdutyService controller", func() {
 
 	When("Updating the PagerdutyService", func() {
 
+		updatedPdService := pagerdutyAPIV1.PagerdutyService{}
 		It("Should successfully update", func() {
-			Expect(k8sClient.Get(ctx, serviceNamespacedName, pdService)).To(Succeed())
-			pdService.Spec.Description = "aaaaa"
-			pdService.Spec.EscalationPolicy = "bbbbb"
-			Expect(k8sClient.Update(ctx, pdService)).To(Succeed())
+			// Sometimes the "fetch, modify, update" cycle requires retry to avoid
+			// a ResourceVersion conflict, presumably because the reconciler is updating
+			// the Status fields in the meantime.
+			Eventually(func() error {
+				Expect(k8sClient.Get(ctx, serviceNamespacedName, &updatedPdService)).To(Succeed())
+				updatedPdService.Spec.Description = "aaaaa"
+				updatedPdService.Spec.EscalationPolicy = "bbbbb"
+				return k8sClient.Update(ctx, &updatedPdService)
+			}, timeout, interval).Should(Succeed())
 		})
 
 		It("Should also update the service in pagerduty", func() {
@@ -118,11 +133,11 @@ var _ = Describe("PagerdutyService controller", func() {
 
 			Eventually(func() string {
 				return pdClientMock.service.Description
-			}).Should(Equal(pdService.Spec.Description))
+			}).Should(Equal(updatedPdService.Spec.Description))
 
 			Eventually(func() string {
 				return pdClientMock.service.EscalationPolicy.ID
-			}).Should(Equal(pdService.Spec.EscalationPolicy))
+			}).Should(Equal(updatedPdService.Spec.EscalationPolicy))
 		})
 
 	})
@@ -156,6 +171,70 @@ var _ = Describe("PagerdutyService controller", func() {
 			}, timeout, interval).Should(HaveOccurred())
 		})
 	})
+
+	When("Lookup excalation policy from a Secret", func() {
+		ctx := context.Background()
+
+		const secretName = "some-secret"
+		const secretKey = "some-key"
+		const escalationPolicyID = "1234ABC"
+
+		// Create the test secret
+		testSecret := corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: "default",
+			},
+			StringData: map[string]string{
+				secretKey: escalationPolicyID,
+			},
+		}
+
+		It("Should create the secret no problem", func() {
+			Expect(k8sClient.Create(ctx, &testSecret)).Should(Succeed())
+		})
+
+		serviceYamlWithSecretNameAndKey := fmt.Sprintf(`---
+apiVersion: "core.strateos.com/v1"
+kind: PagerdutyService
+metadata:
+  name: test-service-bravo
+  namespace: default
+spec:	
+    description: Testing the operator
+    escalationPolicySecret:
+        name: %s
+        key: %s
+    matchLabels:
+        - key: foo
+          value: bar
+    `, secretName, secretKey)
+
+		When("Creating a pagerduty service with escalation policy from a Secret name and key", func() {
+			pdService, err := loadPdServiceFromYaml(serviceYamlWithSecretNameAndKey)
+
+			It("Should be able to fetch the secret", func() {
+				Expect(err).ToNot(HaveOccurred())
+				newSecret := corev1.Secret{}
+				objectKey, _ := runtimeClient.ObjectKeyFromObject(&testSecret)
+				k8sClient.Get(ctx, objectKey, &newSecret)
+				Expect(newSecret.Name).To(Equal(testSecret.Name))
+			})
+
+			It("Reconciler should be able to extract escalation policy from the secret", func() {
+				id, err := pagerdutyServiceReconciler.GetEscalationPolicyID(pdService)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(id).Should(Equal(escalationPolicyID))
+			})
+
+			It("Should be able to create a PagerdutyService resource without error.", func() {
+				Expect(k8sClient.Create(ctx, pdService)).Should(Succeed())
+			})
+
+		})
+
+	})
+
 })
 
 func getNamespacedName(service *pagerdutyAPIV1.PagerdutyService) types.NamespacedName {
@@ -164,11 +243,10 @@ func getNamespacedName(service *pagerdutyAPIV1.PagerdutyService) types.Namespace
 	return key
 }
 
-func loadPdServiceFromYaml(yamlRep string) *pagerdutyAPIV1.PagerdutyService {
-	var decoder = scheme.Codecs.UniversalDeserializer()
-	obj, gkv, err := decoder.Decode([]byte(yamlRep), nil, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(gkv.Kind).Should(Equal(pagerdutyServiceKind))
-	pdService := obj.(*pagerdutyAPIV1.PagerdutyService)
-	return pdService
+func loadPdServiceFromYaml(yamlRep string) (*pagerdutyAPIV1.PagerdutyService, error) {
+	decoder := scheme.Codecs.UniversalDeserializer()
+	pdService := &pagerdutyAPIV1.PagerdutyService{}
+	_, _, err := decoder.Decode([]byte(yamlRep), nil, pdService)
+
+	return pdService, err
 }
