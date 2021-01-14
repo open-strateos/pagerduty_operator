@@ -70,14 +70,14 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	status := &kubeService.Status
 
 	if kubeService.DeletionTimestamp.IsZero() {
-		kubeService.EnsureFinalizerExists(finalizerKey)
+		EnsureFinalizerExists(&kubeService.ObjectMeta, finalizerKey)
 	} else {
 		logger.Info("Resource is marked for deletion. Cleaning up.")
 		err = r.destroyPagerdutyResources(&kubeService)
 		if err == nil {
 			// when everything is cleaned up, remove the finalizer, so k8s can delete the resource
 			logger.Info("Cleanup succesful")
-			kubeService.EnsureFinalizerRemoved(finalizerKey)
+			EnsureFinalizerRemoved(&kubeService.ObjectMeta, finalizerKey)
 			err = r.Update(ctx, kubeService.DeepCopyObject())
 		}
 		return ctrl.Result{}, err

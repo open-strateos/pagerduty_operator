@@ -72,16 +72,6 @@ type PagerdutyService struct {
 	Status PagerdutyServiceStatus `json:"status,omitempty"`
 }
 
-func (pds *PagerdutyService) EnsureFinalizerExists(finalizer string) {
-	if findStringInSlice(pds.ObjectMeta.GetFinalizers(), finalizer) < 0 {
-		pds.ObjectMeta.SetFinalizers(append(pds.ObjectMeta.Finalizers, finalizer))
-	}
-}
-
-func (pds *PagerdutyService) EnsureFinalizerRemoved(finalizer string) {
-	pds.ObjectMeta.SetFinalizers(removeStringFromSlice(pds.ObjectMeta.Finalizers, finalizer))
-}
-
 // +kubebuilder:object:root=true
 
 // PagerdutyServiceList contains a list of PagerdutyService
@@ -93,23 +83,4 @@ type PagerdutyServiceList struct {
 
 func init() {
 	SchemeBuilder.Register(&PagerdutyService{}, &PagerdutyServiceList{})
-}
-
-// Utility stuff
-func findStringInSlice(slice []string, value string) int {
-	for idx, item := range slice {
-		if item == value {
-			return idx
-		}
-	}
-	return -1
-}
-
-// remove the first instance of an item from the slice, by value
-func removeStringFromSlice(slice []string, value string) []string {
-	idx := findStringInSlice(slice, value)
-	if idx >= 0 {
-		return append(slice[:idx], slice[idx+1:]...)
-	}
-	return slice
 }
