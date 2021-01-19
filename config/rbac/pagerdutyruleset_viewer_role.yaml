@@ -1,0 +1,20 @@
+# permissions for end users to view pagerdutyrulesets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pagerdutyruleset-viewer-role
+rules:
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets/status
+  verbs:
+  - get

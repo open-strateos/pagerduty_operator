@@ -98,6 +98,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyService")
 		os.Exit(1)
 	}
+	if err = (&controllers.PagerdutyRulesetReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("PagerdutyRuleset"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyRuleset")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

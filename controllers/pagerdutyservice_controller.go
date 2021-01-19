@@ -43,7 +43,7 @@ type PagerdutyServiceReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	PdClient      PagerdutyInterface
+	PdClient      ServiceReconcilerPagerdutyInterface
 	RulesetID     string
 	ServicePrefix string // append to service names
 }
@@ -309,7 +309,8 @@ func (r *PagerdutyServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // PagerdutyInterface allows us to write a fake client for testing
-type PagerdutyInterface interface {
+// This can be replaces with pdhelpers.ServiceClient once refactors are complete
+type ServiceReconcilerPagerdutyInterface interface {
 	GetEscalationPolicy(id string, opt *pagerduty.GetEscalationPolicyOptions) (*pagerduty.EscalationPolicy, error)
 	GetService(id string, opts *pagerduty.GetServiceOptions) (*pagerduty.Service, error)
 	UpdateService(service pagerduty.Service) (*pagerduty.Service, error)

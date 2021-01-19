@@ -4,4 +4,7 @@ resources:
 - group: core
   kind: PagerdutyService
   version: v1
+- group: core
+  kind: PagerdutyRuleset
+  version: v1
 version: "2"

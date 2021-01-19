@@ -1,0 +1,24 @@
+# permissions for end users to edit pagerdutyrulesets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pagerdutyruleset-editor-role
+rules:
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets/status
+  verbs:
+  - get
