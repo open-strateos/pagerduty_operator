@@ -16,11 +16,14 @@ type RulesetHelper struct {
 	RulesetClient
 }
 
-func (rsh *RulesetHelper) AdoptOrCreateRuleset(opts *RulesetOptions) (*pagerduty.Ruleset, error) {
+// AdoptOrCreateRuleset either fetches or create a ruleset matching the supplied options
+// Returns a pointer to the ruleset, a boolean indicating whether a new resource was created,
+// and an optional error
+func (rsh *RulesetHelper) AdoptOrCreateRuleset(opts *RulesetOptions) (*pagerduty.Ruleset, bool, error) {
 	// Find any existing rulesets that match the name
 	resp, err := rsh.ListRulesets()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	matchingRulesets := make([]*pagerduty.Ruleset, 0, 4)
 	for _, ruleset := range resp.Rulesets {
@@ -30,33 +33,30 @@ func (rsh *RulesetHelper) AdoptOrCreateRuleset(opts *RulesetOptions) (*pagerduty
 	}
 
 	if len(matchingRulesets) > 1 {
-		return nil, fmt.Errorf("%d rulesets found with name \"%s\". Don't know which one to use", len(matchingRulesets), *opts.Name)
+		return nil, false, fmt.Errorf("%d rulesets found with name \"%s\". Don't know which one to use", len(matchingRulesets), *opts.Name)
 	} else if len(matchingRulesets) == 1 {
-		return matchingRulesets[0], nil
+		return matchingRulesets[0], false, nil
 	} else {
 		rs, err := rsh.createRuleset(opts)
-		if err != nil {
-			return nil, err
-		}
-		return rs, fmt.Errorf("CREATED")
+		return rs, true, err
 	}
 }
 
-func (rsc *RulesetHelper) createRuleset(opts *RulesetOptions) (*pagerduty.Ruleset, error) {
+func (rsh *RulesetHelper) createRuleset(opts *RulesetOptions) (*pagerduty.Ruleset, error) {
 	ruleset := &pagerduty.Ruleset{
 		Name: *opts.Name,
 	}
-	ruleset, _, err := rsc.CreateRuleset(ruleset)
+	ruleset, _, err := rsh.CreateRuleset(ruleset)
 	if err != nil {
 		return nil, err
 	}
 
-	rsc.addCatchallRule(ruleset, opts.CatchallServiceName)
+	rsh.addCatchallRule(ruleset, opts.CatchallServiceName)
 
 	return ruleset, err
 }
 
-func (rsc *RulesetHelper) addCatchallRule(ruleset *pagerduty.Ruleset, targetServiceName string) error {
+func (rsh *RulesetHelper) addCatchallRule(ruleset *pagerduty.Ruleset, targetServiceName string) error {
 
 	// service, err := GetServiceByName(client, targetServiceName)
 	// if err != nil {

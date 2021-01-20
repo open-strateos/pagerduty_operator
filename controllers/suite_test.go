@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -42,9 +43,12 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var k8sManager manager.Manager
-var pdClientMock PagerdutyClientMock
 var testEnv *envtest.Environment
+var fakeEventRecorder = record.NewFakeRecorder(10)
+
 var pagerdutyServiceReconciler PagerdutyServiceReconciler
+var pdClientMock PagerdutyClientMock
+var mockRulesetClient MockRulesetClient
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -78,6 +82,10 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
+	/**
+	* SERVICE RECONCILER
+	**/
+	By("Setting up Service Reconciler")
 	// Set up reconciler with mock pagerduty client
 	pdClientMock = PagerdutyClientMock{}
 
@@ -90,6 +98,20 @@ var _ = BeforeSuite(func(done Done) {
 		ServicePrefix: servicePrefix,
 	}
 	err = pagerdutyServiceReconciler.SetupWithManager((k8sManager))
+	Expect(err).ToNot(HaveOccurred())
+
+	/**
+	* RULESET RECONCILER
+	**/
+	By("Setting up Ruleset Reconciler")
+	mockRulesetClient := NewMockRulesetClient()
+	reconciler := PagerdutyRulesetReconciler{
+		Client:          k8sManager.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("PagerdutyRuleset"),
+		EventRecorder:   fakeEventRecorder,
+		PagerDutyClient: mockRulesetClient,
+	}
+	err = reconciler.SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - core.strateos.com
   resources:
+  - pagerdutyrulesets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.strateos.com
+  resources:
   - pagerdutyservices
   verbs:
   - create

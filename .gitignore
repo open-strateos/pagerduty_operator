@@ -25,3 +25,5 @@ bin
 
 # environment file could have secrets
 envfile
+
+default.etcd
