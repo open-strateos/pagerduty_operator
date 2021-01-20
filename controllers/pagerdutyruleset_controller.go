@@ -82,12 +82,8 @@ func (r *PagerdutyRulesetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	var created bool
 
 	if kubeRuleset.Status.RulesetID == "" {
-		opts := pdhelpers.RulesetOptions{
-			Name:                &kubeRuleset.Name,
-			CatchallServiceName: r.Options.CatchallService,
-		}
 		helper := pdhelpers.RulesetHelper{RulesetClient: r.PagerDutyClient}
-		pdRuleset, created, err = helper.AdoptOrCreateRuleset(&opts)
+		pdRuleset, created, err = helper.AdoptOrCreateRuleset(kubeRuleset.Name)
 		if err != nil {
 			msg := fmt.Sprintf("Unable to create ruleset: %v", err.Error())
 			r.EventRecorder.Event(&kubeRuleset, "Warning", "CreateRuleset", msg)

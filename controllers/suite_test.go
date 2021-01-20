@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	corev1 "pagerduty-operator/api/v1"
+	"pagerduty-operator/pdhelpers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -48,7 +49,7 @@ var fakeEventRecorder = record.NewFakeRecorder(10)
 
 var pagerdutyServiceReconciler PagerdutyServiceReconciler
 var pdClientMock PagerdutyClientMock
-var mockRulesetClient MockRulesetClient
+var fakeRulesetClient pdhelpers.FakeRulesetClient
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -104,12 +105,12 @@ var _ = BeforeSuite(func(done Done) {
 	* RULESET RECONCILER
 	**/
 	By("Setting up Ruleset Reconciler")
-	mockRulesetClient := NewMockRulesetClient()
+	fakeRulesetClient = pdhelpers.NewFakeRulesetClient()
 	reconciler := PagerdutyRulesetReconciler{
 		Client:          k8sManager.GetClient(),
 		Log:             ctrl.Log.WithName("controllers").WithName("PagerdutyRuleset"),
 		EventRecorder:   fakeEventRecorder,
-		PagerDutyClient: mockRulesetClient,
+		PagerDutyClient: fakeRulesetClient,
 	}
 	err = reconciler.SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
