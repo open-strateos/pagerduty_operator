@@ -26,8 +26,10 @@ func (rsh *RulesetHelper) AdoptOrCreateRuleset(name string) (*pagerduty.Ruleset,
 		rs, resp, err := rsh.CreateRuleset(&pagerduty.Ruleset{
 			Name: name,
 		})
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != 201 {
 			return nil, false, fmt.Errorf("Error code %d while creating ruleset: %s", resp.StatusCode, resp.Status)
+		} else if rs == nil {
+			return nil, false, fmt.Errorf("ruleset was nil, but no errors from API")
 		} else if err != nil {
 			return nil, false, err
 		}
@@ -51,7 +53,7 @@ func (rsh *RulesetHelper) GetRulesetByName(name string) (*pagerduty.Ruleset, err
 		}
 	}
 
-	if len(matchingRulesets) < 1 0 {
+	if len(matchingRulesets) < 1 {
 		return nil, nil // no error, but no ruleset exists
 	} else if len(matchingRulesets) > 1 {
 		return nil, fmt.Errorf("Didn't expect to find %d rulesets named %v", len(matchingRulesets), name)
@@ -104,7 +106,7 @@ func (rsc FakeRulesetClient) CreateRuleset(r *pagerduty.Ruleset) (*pagerduty.Rul
 		r.ID = RandomString(10)
 	}
 	rsc.RulesetsByID[r.ID] = r
-	return r, &http.Response{StatusCode: http.StatusOK}, nil
+	return r, &http.Response{StatusCode: http.StatusCreated}, nil
 }
 
 func (rsc FakeRulesetClient) DeleteRuleset(id string) error {

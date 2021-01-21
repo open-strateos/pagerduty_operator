@@ -42,7 +42,7 @@ spec:
         status:
           description: PagerdutyRulesetStatus defines the observed state of PagerdutyRuleset
           properties:
-            adopted:
+            created:
               type: boolean
             rulesetID:
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
@@ -52,7 +52,7 @@ spec:
             state:
               type: string
           required:
-          - adopted
+          - created
           - state
           type: object
       type: object

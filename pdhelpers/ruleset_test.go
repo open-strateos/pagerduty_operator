@@ -15,9 +15,9 @@ func TestRulesetHelpers(t *testing.T) {
 
 	// Should create as expected
 	rs, created, err := rsHelper.AdoptOrCreateRuleset(rulesetName)
+	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(rs).NotTo(BeNil())
 	g.Expect(created).To(BeTrue())
-	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(rs.Name).To(Equal(rulesetName))
 	g.Expect(rs.ID).NotTo(BeNil())
 

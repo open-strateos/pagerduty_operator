@@ -37,7 +37,7 @@ type PagerdutyRulesetStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	RulesetID string `json:"rulesetID,omitempty"`
-	Adopted   bool   `json:"adopted"`
+	Created   bool   `json:"created"`
 	State     string `json:"state"`
 }
 

@@ -23,7 +23,7 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 
 			Eventually(func() bool {
 				ruleset, err := rsh.GetRulesetByName(rulesetName)
-				if err != nil {
+				if ruleset == nil || err != nil {
 					return false
 				}
 				return ruleset.Name == rulesetName
