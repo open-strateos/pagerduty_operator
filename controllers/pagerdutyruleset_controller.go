@@ -59,7 +59,7 @@ func (r *PagerdutyRulesetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	var kubeRuleset v1.PagerdutyRuleset
 	err := r.Get(ctx, req.NamespacedName, &kubeRuleset)
 	if err != nil {
-		log.V(1).Info("Unable to fetch PagerdutyRuleset: %v", req.NamespacedName)
+		log.V(1).Info("Unable to fetch PagerdutyRuleset", "resource", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
