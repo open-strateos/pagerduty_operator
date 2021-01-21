@@ -12,11 +12,12 @@ import (
 
 var _ = Describe("PagerdutyRuleset Controller", func() {
 	ctx := context.Background()
+	rulesetName := "foo"
+	testRuleset := newTestK8sRuleset(rulesetName)
+
 	When("Creating a new ruleset", func() {
-		rulesetName := "foo"
 		It("should work", func() {
-			ruleset := newTestK8sRuleset(rulesetName)
-			err := k8sClient.Create(ctx, &ruleset)
+			err := k8sClient.Create(ctx, &testRuleset)
 			Expect(err).ToNot(HaveOccurred())
 
 			rsh := pdhelpers.RulesetHelper{RulesetClient: fakeRulesetClient}
@@ -28,6 +29,23 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 				}
 				return ruleset.Name == rulesetName
 			}).Should(BeTrue())
+		})
+	})
+
+	When("Deleting a ruleset", func() {
+		It("Should clean up the pagerduty rulesest", func() {
+			testRulesetID := testRuleset.Status.RulesetID
+			Expect(len(fakeRulesetClient.RulesetsByID)).To(Equal(1))
+			// Expect(fakeRulesetClient.RulesetsByID[testRulesetID].Name).To(Equal(testRuleset.Name))
+
+			err := k8sClient.Delete(ctx, &testRuleset)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() bool {
+				_, exists := fakeRulesetClient.RulesetsByID[testRulesetID]
+				return exists
+			}).Should(BeFalse())
+
 		})
 	})
 })
