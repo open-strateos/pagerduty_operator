@@ -5,15 +5,21 @@ import (
 	v1 "pagerduty-operator/api/v1"
 	"pagerduty-operator/pdhelpers"
 
+	pagerduty "github.com/PagerDuty/go-pagerduty"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("PagerdutyRuleset Controller", func() {
 	ctx := context.Background()
 	rulesetName := "foo"
 	testRuleset := newTestK8sRuleset(rulesetName)
+	testRulesetNamespacedName := types.NamespacedName{
+		Namespace: testRuleset.GetObjectMeta().GetNamespace(),
+		Name:      testRuleset.GetObjectMeta().GetName(),
+	}
 
 	When("Creating a new ruleset", func() {
 		It("should work", func() {
@@ -22,13 +28,20 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 
 			rsh := pdhelpers.RulesetHelper{RulesetClient: fakeRulesetClient}
 
+			var ruleset *pagerduty.Ruleset
 			Eventually(func() bool {
-				ruleset, err := rsh.GetRulesetByName(rulesetName)
+				ruleset, err = rsh.GetRulesetByName(rulesetName)
 				if ruleset == nil || err != nil {
 					return false
 				}
 				return ruleset.Name == rulesetName
 			}).Should(BeTrue())
+
+			var createdRuleset v1.PagerdutyRuleset
+			err = k8sClient.Get(ctx, testRulesetNamespacedName, &createdRuleset)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(createdRuleset.Status.RulesetID).To(Equal(ruleset.ID))
+			Expect(createdRuleset.Status.Created).To(BeTrue())
 		})
 	})
 
