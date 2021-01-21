@@ -15,7 +15,7 @@ pipeline {
     }
     environment {
         AWS_DEFAULT_REGION = "us-west-2"
-        GITHUB_TOKEN = credentials('ted-github-token')
+        GITHUB_TOKEN = credentials('github-jenkins-publish-token')
     }
 
     stages {
