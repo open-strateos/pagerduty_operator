@@ -131,7 +131,9 @@ func (r *PagerdutyRulesetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *PagerdutyRulesetReconciler) CleanupResources(ruleset *v1.PagerdutyRuleset) error {
 	rulesetID := ruleset.Status.RulesetID
 	if rulesetID == "" {
-		return fmt.Errorf("Empty rulesetID")
+		return nil // no ruleset to clean up
+	} else if ruleset.Status.Adopted {
+		return nil // leave adopted rulesets alone, for safety
 	}
 	return r.PagerDutyClient.DeleteRuleset(rulesetID)
 }
