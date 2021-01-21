@@ -16,35 +16,47 @@ type RulesetHelper struct {
 // and an optional error
 func (rsh *RulesetHelper) AdoptOrCreateRuleset(name string) (*pagerduty.Ruleset, bool, error) {
 	// Find any existing rulesets that match the name
-	matchingRulesets, err := rsh.GetRulesetsByName(name)
+	existingRuleset, err := rsh.GetRulesetByName(name)
 	if err != nil {
 		return nil, false, err
 	}
 
-	if len(matchingRulesets) > 1 {
-		return nil, false, fmt.Errorf("%d rulesets found with name \"%s\". Don't know which one to use", len(matchingRulesets), name)
-	} else if len(matchingRulesets) == 1 {
-		return matchingRulesets[0], false, nil
-	} else {
-		rs, _, err := rsh.CreateRuleset(&pagerduty.Ruleset{
+	if existingRuleset == nil {
+		// No ruleset found. Create one.
+		rs, resp, err := rsh.CreateRuleset(&pagerduty.Ruleset{
 			Name: name,
 		})
+		if resp.StatusCode != 200 {
+			return nil, false, fmt.Errorf("Error code %d while creating ruleset: %s", resp.StatusCode, resp.Status)
+		} else if err != nil {
+			return nil, false, err
+		}
 		return rs, true, err
+	} else {
+		// adopt existing ruleset
+		return existingRuleset, false, nil
 	}
+
 }
 
-func (rsh *RulesetHelper) GetRulesetsByName(name string) ([]*pagerduty.Ruleset, error) {
+func (rsh *RulesetHelper) GetRulesetByName(name string) (*pagerduty.Ruleset, error) {
 	resp, err := rsh.ListRulesets()
 	if err != nil {
 		return nil, err
 	}
-	matchingRulesets := make([]*pagerduty.Ruleset, 0, 4)
+	matchingRulesets := make([]*pagerduty.Ruleset, 0, 1)
 	for _, ruleset := range resp.Rulesets {
 		if ruleset.Name == name {
 			matchingRulesets = append(matchingRulesets, ruleset)
 		}
 	}
-	return matchingRulesets, nil
+
+	if len(matchingRulesets) < 1 0 {
+		return nil, nil // no error, but no ruleset exists
+	} else if len(matchingRulesets) > 1 {
+		return nil, fmt.Errorf("Didn't expect to find %d rulesets named %v", len(matchingRulesets), name)
+	}
+	return matchingRulesets[0], nil
 
 }
 

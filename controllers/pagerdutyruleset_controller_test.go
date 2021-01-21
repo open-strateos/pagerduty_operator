@@ -22,11 +22,11 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 			rsh := pdhelpers.RulesetHelper{RulesetClient: fakeRulesetClient}
 
 			Eventually(func() bool {
-				rulesets, err := rsh.GetRulesetsByName(rulesetName)
-				if err != nil || len(rulesets) < 1 {
+				ruleset, err := rsh.GetRulesetByName(rulesetName)
+				if err != nil {
 					return false
 				}
-				return rulesets[0].Name == rulesetName
+				return ruleset.Name == rulesetName
 			}).Should(BeTrue())
 		})
 	})
