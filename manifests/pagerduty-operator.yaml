@@ -4,6 +4,67 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
+  name: pagerdutyrulesets.core.strateos.com
+spec:
+  group: core.strateos.com
+  names:
+    kind: PagerdutyRuleset
+    listKind: PagerdutyRulesetList
+    plural: pagerdutyrulesets
+    singular: pagerdutyruleset
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      description: PagerdutyRuleset is the Schema for the pagerdutyrulesets API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: PagerdutyRulesetSpec defines the desired state of PagerdutyRuleset
+          properties:
+            catchallService:
+              description: Foo is an example field of PagerdutyRuleset. Edit PagerdutyRuleset_types.go to remove/update
+              type: string
+          type: object
+        status:
+          description: PagerdutyRulesetStatus defines the observed state of PagerdutyRuleset
+          properties:
+            adopted:
+              type: boolean
+            rulesetID:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run "make" to regenerate code after modifying this file'
+              type: string
+            state:
+              type: string
+          required:
+          - adopted
+          - state
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
   name: pagerdutyservices.core.strateos.com
 spec:
   group: core.strateos.com
@@ -32,6 +93,17 @@ spec:
               type: string
             escalationPolicy:
               type: string
+            escalationPolicySecret:
+              description: EscalationPolicySecretSpec allows you to retrieve the escalation policy from a secret in the same namespace as the PagerdutyService
+              properties:
+                key:
+                  type: string
+                name:
+                  type: string
+              required:
+              - key
+              - name
+              type: object
             matchLabels:
               items:
                 properties:
@@ -47,6 +119,7 @@ spec:
               type: array
           required:
           - escalationPolicy
+          - escalationPolicySecret
           - matchLabels
           type: object
         status:
@@ -57,6 +130,8 @@ spec:
             pagerdutyServiceName:
               type: string
             ruleID:
+              type: string
+            status:
               type: string
           type: object
       type: object
@@ -111,6 +186,26 @@ metadata:
   creationTimestamp: null
   name: pagerduty-operator-manager-role
 rules:
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.strateos.com
+  resources:
+  - pagerdutyrulesets/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - core.strateos.com
   resources:
@@ -234,6 +329,16 @@ spec:
     spec:
       containers:
       - args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8080/
+        - --logtostderr=true
+        - --v=10
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+      - args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
         command:
@@ -247,14 +352,4 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
       terminationGracePeriodSeconds: 10
