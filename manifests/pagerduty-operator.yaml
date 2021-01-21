@@ -35,16 +35,13 @@ spec:
         status:
           description: PagerdutyRulesetStatus defines the observed state of PagerdutyRuleset
           properties:
-            adopted:
+            created:
               type: boolean
             rulesetID:
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run "make" to regenerate code after modifying this file'
               type: string
-            state:
-              type: string
           required:
-          - adopted
-          - state
+          - created
           type: object
       type: object
   version: v1
@@ -343,7 +340,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: 742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator:latest
+        image: controller:latest
         name: manager
         resources:
           limits:

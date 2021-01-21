@@ -38,7 +38,6 @@ type PagerdutyRulesetStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	RulesetID string `json:"rulesetID,omitempty"`
 	Created   bool   `json:"created"`
-	State     string `json:"state"`
 }
 
 // +kubebuilder:object:root=true

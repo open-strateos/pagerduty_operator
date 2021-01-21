@@ -140,16 +140,3 @@ func (r *PagerdutyRulesetReconciler) CleanupResources(ruleset *v1.PagerdutyRules
 	}
 	return r.PagerDutyClient.DeleteRuleset(rulesetID)
 }
-
-// UpdateStatus sets the value of the service's Status.State field to SUCCESS or ERROR
-// based on the value of the supplied error. It persists this to etcd immediately.
-func (r *PagerdutyRulesetReconciler) UpdateStatus(ruleset *v1.PagerdutyRuleset, err error) {
-	var state string
-	if err == nil {
-		state = "SUCCESS"
-	} else {
-		state = fmt.Sprintf("ERROR: %s", err.Error())
-	}
-	ruleset.Status.State = state
-	r.Status().Update(context.Background(), ruleset)
-}

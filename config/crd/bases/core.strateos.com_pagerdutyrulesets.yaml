@@ -49,11 +49,8 @@ spec:
                 of cluster Important: Run "make" to regenerate code after modifying
                 this file'
               type: string
-            state:
-              type: string
           required:
           - created
-          - state
           type: object
       type: object
   version: v1
