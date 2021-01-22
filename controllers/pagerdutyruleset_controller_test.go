@@ -40,7 +40,10 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 			var createdRuleset v1.PagerdutyRuleset
 			err = k8sClient.Get(ctx, testRulesetNamespacedName, &createdRuleset)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(createdRuleset.Status.RulesetID).To(Equal(ruleset.ID))
+			Eventually(func() string {
+				_ = k8sClient.Get(ctx, testRulesetNamespacedName, &createdRuleset)
+				return createdRuleset.Status.RulesetID
+			}).Should(Equal(ruleset.ID))
 			Expect(createdRuleset.Status.Created).To(BeTrue())
 		})
 	})
@@ -60,6 +63,66 @@ var _ = Describe("PagerdutyRuleset Controller", func() {
 			}).Should(BeFalse())
 
 		})
+	})
+
+	When("checking package-global variables", func() {
+		It("srsly", func() {
+			Expect(k8sClient).NotTo(BeNil())
+			Expect(fakeRulesetClient.RulesetsByID).NotTo(BeNil())
+		})
+	})
+
+	When("Adopting an existing ruleset", func() {
+		adoptedRulesetName := "already-exists"
+		It("Does the right thing.", func() {
+
+			// Make sure Ginkgo isn't doing shady things with execution order
+			Expect(fakeRulesetClient.RulesetsByID).ToNot(BeNil())
+			Expect(k8sClient).NotTo(BeNil())
+
+			// A pre-existing ruleset in the pagerduty API
+			existingRuleset := &pagerduty.Ruleset{Name: adoptedRulesetName}
+			existingRuleset, _, err := fakeRulesetClient.CreateRuleset(existingRuleset)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a k8s ruleset with the same name
+			adoptedRuleset := newTestK8sRuleset(adoptedRulesetName)
+			err = k8sClient.Create(ctx, &adoptedRuleset)
+			Expect(err).ToNot(HaveOccurred())
+			namespacedName := types.NamespacedName{
+				Namespace: adoptedRuleset.Namespace,
+				Name:      adoptedRuleset.Name,
+			}
+
+			// Wait for reconcile
+			Eventually(func() error {
+				return k8sClient.Get(ctx, namespacedName, &adoptedRuleset)
+			}).ShouldNot(HaveOccurred())
+			Eventually(func() string {
+				_ = k8sClient.Get(ctx, namespacedName, &adoptedRuleset)
+				return adoptedRuleset.Status.RulesetID
+			}).ShouldNot(BeEmpty())
+
+			// Shold be marked as adopted
+			rulesetID := adoptedRuleset.Status.RulesetID
+			Expect(adoptedRuleset.Status.Created).To(BeFalse())
+			Expect(rulesetID).ToNot(BeEmpty())
+
+			// Delete the k8s ruleset
+			err = k8sClient.Delete(ctx, &adoptedRuleset)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Wait for cleanup to finish
+			Eventually(func() error {
+				return k8sClient.Get(ctx, namespacedName, &adoptedRuleset)
+			}, "3s").Should(HaveOccurred())
+
+			// pagerdyty ruleset should still exist
+			r, _, err := fakeRulesetClient.GetRuleset(rulesetID)
+			Expect(r).ToNot(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 	})
 })
 
