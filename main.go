@@ -61,6 +61,9 @@ func main() {
 	flag.StringVar(&rulesetID, "ruleset", getEnv("PAGERDUTY_RULESET_ID", ""), "ID of the ruleset to append routing rules to.")
 	flag.Parse()
 
+	fmt.Println("Setting up logger")
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+
 	if pagerdutyAPIKey == "" {
 		setupLog.Info("API key is required.")
 		os.Exit(1)
@@ -70,8 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-
+	setupLog.Info("Setting up manager")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
@@ -84,9 +86,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	setupLog.Info("Creating pagerduty client")
 	pdClient := pagerduty.NewClient(pagerdutyAPIKey)
 	_ = getRulesetOrDie(pdClient, rulesetID)
 
+	setupLog.Info("Starting reconcilers")
 	if err = (&controllers.PagerdutyServiceReconciler{
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("PagerdutyService"),
@@ -96,6 +100,16 @@ func main() {
 		ServicePrefix: servicePrefix,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyService")
+		os.Exit(1)
+	}
+	if err = (&controllers.PagerdutyRulesetReconciler{
+		Client:          mgr.GetClient(),
+		PagerDutyClient: pdClient,
+		Log:             ctrl.Log.WithName("controllers").WithName("PagerdutyRuleset"),
+		Scheme:          mgr.GetScheme(),
+		EventRecorder:   mgr.GetEventRecorderFor("ruleset-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PagerdutyRuleset")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

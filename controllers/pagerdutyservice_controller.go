@@ -43,7 +43,7 @@ type PagerdutyServiceReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	PdClient      PagerdutyInterface
+	PdClient      ServiceReconcilerPagerdutyInterface
 	RulesetID     string
 	ServicePrefix string // append to service names
 }
@@ -70,14 +70,14 @@ func (r *PagerdutyServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	status := &kubeService.Status
 
 	if kubeService.DeletionTimestamp.IsZero() {
-		kubeService.EnsureFinalizerExists(finalizerKey)
+		EnsureFinalizerExists(&kubeService.ObjectMeta, finalizerKey)
 	} else {
 		logger.Info("Resource is marked for deletion. Cleaning up.")
 		err = r.destroyPagerdutyResources(&kubeService)
 		if err == nil {
 			// when everything is cleaned up, remove the finalizer, so k8s can delete the resource
 			logger.Info("Cleanup succesful")
-			kubeService.EnsureFinalizerRemoved(finalizerKey)
+			EnsureFinalizerRemoved(&kubeService.ObjectMeta, finalizerKey)
 			err = r.Update(ctx, kubeService.DeepCopyObject())
 		}
 		return ctrl.Result{}, err
@@ -309,7 +309,8 @@ func (r *PagerdutyServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // PagerdutyInterface allows us to write a fake client for testing
-type PagerdutyInterface interface {
+// This can be replaces with pdhelpers.ServiceClient once refactors are complete
+type ServiceReconcilerPagerdutyInterface interface {
 	GetEscalationPolicy(id string, opt *pagerduty.GetEscalationPolicyOptions) (*pagerduty.EscalationPolicy, error)
 	GetService(id string, opts *pagerduty.GetServiceOptions) (*pagerduty.Service, error)
 	UpdateService(service pagerduty.Service) (*pagerduty.Service, error)
