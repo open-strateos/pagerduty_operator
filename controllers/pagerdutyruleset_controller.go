@@ -44,7 +44,7 @@ type PagerdutyRulesetReconciler struct {
 	Log             logr.Logger
 	Scheme          *runtime.Scheme
 	EventRecorder   record.EventRecorder
-	PagerDutyClient *pdhelpers.PagerdutyClientInterface
+	PagerDutyClient pdhelpers.RulesetClient
 	Options         PagerdutyReconcilerOptions
 }
 
@@ -59,18 +59,24 @@ func (r *PagerdutyRulesetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	var kubeRuleset v1.PagerdutyRuleset
 	err := r.Get(ctx, req.NamespacedName, &kubeRuleset)
 	if err != nil {
-		log.V(1).Info("Unable to fetch PagerdutyRuleset: %v", req.NamespacedName)
+		log.V(1).Info("Unable to fetch PagerdutyRuleset", "resource", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
+	// Finalizer logic
 	if kubeRuleset.DeletionTimestamp.IsZero() {
 		EnsureFinalizerExists(&kubeRuleset.ObjectMeta, rulesetFinalizerKey)
 	} else {
-		err = r.CleanupResources()
+		err = r.CleanupResources(&kubeRuleset)
 		if err == nil {
 			log.Info("Cleanup Successful")
 			EnsureFinalizerRemoved(&kubeRuleset.ObjectMeta, rulesetFinalizerKey)
 			err = r.Update(ctx, &kubeRuleset)
+			return ctrl.Result{}, nil // not worth doing anything else, since it's about to be deleted
+		} else {
+			msg := fmt.Sprintf("Cleanup error: %v", err.Error())
+			r.EventRecorder.Event(&kubeRuleset, "Warning", "CleanupFail", msg)
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
 
@@ -78,21 +84,12 @@ func (r *PagerdutyRulesetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	var created bool
 
 	if kubeRuleset.Status.RulesetID == "" {
-		opts := pdhelpers.RulesetOptions{
-			Name:                &kubeRuleset.Name,
-			CatchallServiceName: r.Options.CatchallService,
-		}
-		helper := pdhelpers.RulesetHelper{RulesetClient: *r.PagerDutyClient}
-		pdRuleset, err = helper.AdoptOrCreateRuleset(&opts)
+		helper := pdhelpers.RulesetHelper{RulesetClient: r.PagerDutyClient}
+		pdRuleset, created, err = helper.AdoptOrCreateRuleset(kubeRuleset.Name)
 		if err != nil {
-			if err.Error() == "CREATED" {
-				created = true
-			} else {
-				msg := fmt.Sprintf("Unable to create ruleset: %v", err.Error())
-				r.EventRecorder.Event(&kubeRuleset, "Warning", "CreateRuleset", msg)
-				r.Log.V(1).Info(msg)
-				return ctrl.Result{Requeue: true}, err
-			}
+			msg := fmt.Sprintf("Unable to create ruleset: %v", err.Error())
+			r.EventRecorder.Event(&kubeRuleset, "Warning", "CreateRuleset", msg)
+			return ctrl.Result{Requeue: true}, err
 		}
 
 		var adopedOrCreated string
@@ -103,16 +100,25 @@ func (r *PagerdutyRulesetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		}
 		msg := fmt.Sprintf("%s ruleset %s (ID: %s)", adopedOrCreated, pdRuleset.Name, pdRuleset.ID)
 		r.EventRecorder.Event(&kubeRuleset, "Normal", "CreateRuleset", msg)
-		r.Log.V(1).Info(msg)
+	} else {
+		rulesetID := kubeRuleset.Status.RulesetID
+		pdRuleset, _, err = r.PagerDutyClient.GetRuleset(rulesetID)
+		if err != nil {
+			msg := fmt.Sprintf("Unable to fetch ruleset %s", rulesetID)
+			r.EventRecorder.Event(&kubeRuleset, "Warning", "FetchPDRuleset", msg)
+			r.Log.V(1).Info(msg)
+			return ctrl.Result{Requeue: true}, err
+		}
 	}
 
 	kubeRuleset.Status.RulesetID = pdRuleset.ID
-	kubeRuleset.Status.Adopted = kubeRuleset.Status.Adopted || (!created)
+	if created {
+		kubeRuleset.Status.Created = true
+	}
 
 	err = r.Client.Update(ctx, &kubeRuleset)
 	if err != nil {
 		r.EventRecorder.Event(&kubeRuleset, "Warning", "CreateRuleset", err.Error())
-		r.Log.V(1).Info(err.Error())
 		return ctrl.Result{Requeue: true}, err
 	}
 
@@ -125,19 +131,12 @@ func (r *PagerdutyRulesetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *PagerdutyRulesetReconciler) CleanupResources() error {
-	return nil
-}
-
-// UpdateStatus sets the value of the service's Status.Status field to SUCCESS or ERROR
-// based on the value of the supplied error. It persists this to etcd immediately.
-func (r *PagerdutyRulesetReconciler) UpdateStatus(ruleset *v1.PagerdutyService, err error) {
-	var status string
-	if err == nil {
-		status = "SUCCESS"
-	} else {
-		status = fmt.Sprintf("ERROR: %s", err.Error())
+func (r *PagerdutyRulesetReconciler) CleanupResources(ruleset *v1.PagerdutyRuleset) error {
+	rulesetID := ruleset.Status.RulesetID
+	if rulesetID == "" {
+		return nil // no ruleset to clean up
+	} else if !ruleset.Status.Created {
+		return nil // leave adopted rulesets alone, for safety
 	}
-	ruleset.Status.Status = status
-	r.Status().Update(context.Background(), ruleset)
+	return r.PagerDutyClient.DeleteRuleset(rulesetID)
 }

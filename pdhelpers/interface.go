@@ -28,7 +28,7 @@ type ServiceClient interface {
 
 var _ ServiceClient = (*pagerduty.Client)(nil) // ensure pagerduty client meets the interface
 
-// RulesetClient is just he components of pagerduty.Client that involve rulesets
+// RulesetClient is just the components of pagerduty.Client that involve rulesets
 type RulesetClient interface {
 	CreateRuleset(r *pagerduty.Ruleset) (*pagerduty.Ruleset, *http.Response, error)
 	DeleteRuleset(id string) error

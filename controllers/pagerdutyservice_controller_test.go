@@ -129,15 +129,15 @@ var _ = Describe("PagerdutyService controller", func() {
 
 			Eventually(func() bool {
 				return pdClientMock.updateServiceCalled
-			}).Should(BeTrue())
+			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() string {
 				return pdClientMock.service.Description
-			}).Should(Equal(updatedPdService.Spec.Description))
+			}, timeout, interval).Should(Equal(updatedPdService.Spec.Description))
 
 			Eventually(func() string {
 				return pdClientMock.service.EscalationPolicy.ID
-			}).Should(Equal(updatedPdService.Spec.EscalationPolicy))
+			}, timeout, interval).Should(Equal(updatedPdService.Spec.EscalationPolicy))
 		})
 
 	})
