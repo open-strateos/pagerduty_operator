@@ -340,7 +340,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: controller:latest
+        image: 742073802618.dkr.ecr.us-west-2.amazonaws.com/strateos/pagerduty-operator:release-0.24
         name: manager
         resources:
           limits:
