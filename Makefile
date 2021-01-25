@@ -1,6 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= REGISTRY_URL:TAG
+# Set this on build, or replace it later with kustomize
+IMG ?= PAGERDUTY_OPERATOR_REGISTRY:PAGERDUTY_OPERATOR_TAG
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 # output manifests to this directory
