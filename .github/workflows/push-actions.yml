@@ -1,0 +1,20 @@
+name: Push Actions
+on: [push, pull_request]
+jobs:
+  test-and-build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go:
+          - '1.14'
+          - '1.15'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: RyanSiu1995/kubebuilder-action@v1 # install kubebuilder
+        with:
+          version: 2.3.1
+      - name: test
+        run: make test
