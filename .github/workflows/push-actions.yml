@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-go@v1
         with:
           go-version: ${{ matrix.go }}
-      - uses: RyanSiu1995/kubebuilder-action@v1 # install kubebuilder
+      - uses: RyanSiu1995/kubebuilder-action@v1.1 # install kubebuilder
         with:
           version: 2.3.1
       - name: test
