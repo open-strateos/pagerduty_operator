@@ -1,7 +1,7 @@
 name: Push Actions
 on: [push, pull_request]
 jobs:
-  test-and-build:
+  test:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
